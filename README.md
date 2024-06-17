@@ -22,6 +22,11 @@ AutoBanana simplifies the repetitive task of managing game sessions, making it i
 
 ```diff
 
+v1.2 17/06/24
+
++   Added statistics tracker
++   Fixed bug with UI
+
 v1.1 17/06/24
 
 +   Improved UI

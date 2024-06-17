@@ -8,6 +8,8 @@ import sys
 import winreg as reg
 import logging
 from colorama import init, Fore, Style
+import requests
+import uuid
 
 logging.basicConfig(filename='AutoBanana.log', level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -41,7 +43,9 @@ class AutoBanana:
             existing_value, _ = reg.QueryValueEx(open_key, 'OpenBanana')
 
             if existing_value == script_path:
-                print("Already added to startup")
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                print(f"{Fore.YELLOW}{
+                      timestamp} - {Fore.YELLOW}Already on startup")
             else:
                 reg.SetValueEx(open_key, 'OpenBanana', 0,
                                reg.REG_SZ, script_path)
@@ -70,6 +74,10 @@ class AutoBanana:
 
     def open_program(self, program_path, time_to_wait):
         try:
+            self.clear_console()
+            with open("logo.txt", 'r', encoding='utf-8') as file:
+                logo = file.read()
+            print(self.fire(logo))
             steam_run_url = "steam://rungameid/2923300"
             webbrowser.open(steam_run_url)
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -91,8 +99,9 @@ class AutoBanana:
                 if proc.info['name'] == process_name:
                     try:
                         proc.terminate()
-                        print(f"Terminated {process_name} with PID {
-                              proc.info['pid']}")
+                        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        print(f"{Fore.YELLOW}{timestamp} - Terminated {Fore.CYAN + process_name} with PID {Fore.MAGENTA}{
+                            proc.info['pid']}{Fore.RESET}")
                     except psutil.NoSuchProcess:
                         pass
             end_time = time.time() + 10
@@ -102,8 +111,8 @@ class AutoBanana:
                     if proc.info['name'] == process_name:
                         try:
                             proc.terminate()
-                            print(f"Terminated {process_name} with PID {
-                                  proc.info['pid']}")
+                            print(f"{Fore.YELLOW}{timestamp} - Terminated {Fore.CYAN + process_name} with PID {Fore.MAGENTA}{
+                                  proc.info['pid']}{Fore.RESET}")
                         except psutil.NoSuchProcess:
                             pass
         except Exception as e:
@@ -160,11 +169,32 @@ class AutoBanana:
             time.sleep(1)
             seconds -= 1
 
+    def register(self):
+        try:
+            with open('user_id.txt', 'r') as file:
+                user_id = file.read()
+        except FileNotFoundError:
+            user_id = str(uuid.uuid4())
+            with open('user_id.txt', 'w') as file:
+                file.write(user_id)
+
+        if not os.path.exists('usage_logged.txt'):
+            web_app_url = 'https://script.google.com/macros/s/AKfycbxKQlXPVPq38RxqaqtOwGWTgpmNQIZyu2q2aAH5mSsvxlCiRe9jToIzv7yBA8kZECZ0/exec'
+            response = requests.post(web_app_url, data={'user_id': user_id})
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            if response.status_code == 200:
+                with open('usage_logged.txt', 'w') as file:
+                    file.write('logged')
+                print(f"{Fore.YELLOW}{
+                      timestamp} - {Fore.GREEN}Usage logged successfully.")
+            else:
+                logging.error(f"{timestamp} - Failed to log usage.")
+        else:
+            print(f"{Fore.YELLOW}{datetime.now().strftime(
+                '%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Usage already logged.")
+
     def main(self):
-        self.clear_console()
-        with open("logo.txt", 'r', encoding='utf-8') as file:
-            logo = file.read()
-        print(self.fire(logo))
+        self.register()
         if self.config['run_on_startup']:
             self.add_to_startup()
         else:
