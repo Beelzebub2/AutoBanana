@@ -1,3 +1,6 @@
+![Static Badge](https://img.shields.io/badge/Version-v1.1-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
+![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 # AutoBanana
 
 AutoBanana is an automated script designed to manage the opening and closing of a specific game through Steam. The primary features of AutoBanana include:
@@ -11,3 +14,15 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 - **Customizable Configurations:** Customize settings like program path, time to wait, and installation trigger through a `config.ini` file.
 
 AutoBanana simplifies the repetitive task of managing game sessions, making it ideal for users who want to automate their gaming routines.
+
+```diff
+
+v1.1 17/06/24
+
++   Improved UI
++   Organized the code
++   Added time until next open
++   Added start on startup
+
+
+```
