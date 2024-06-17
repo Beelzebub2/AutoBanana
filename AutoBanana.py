@@ -183,3 +183,4 @@ class AutoBanana:
 if __name__ == "__main__":
     auto_banana = AutoBanana()
     auto_banana.main()
+    input(Fore.CYAN + "\nPress Enter to exit..." + Style.RESET_ALL)
