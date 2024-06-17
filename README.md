@@ -13,8 +13,6 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 - **Startup Management:** Easily add or remove AutoBanana from the Windows startup sequence.
 - **Customizable Configurations:** Customize settings like program path, time to wait, and installation trigger through a `config.ini` file.
 
-AutoBanana simplifies the repetitive task of managing game sessions, making it ideal for users who want to automate their gaming routines.
-
 ### Installation
 
 - **Install python**  
