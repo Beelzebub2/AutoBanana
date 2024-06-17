@@ -15,6 +15,11 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 
 AutoBanana simplifies the repetitive task of managing game sessions, making it ideal for users who want to automate their gaming routines.
 
+### Installation
+
+- **Install python**  
+- **Run setup.bat**
+
 ```diff
 
 v1.1 17/06/24
