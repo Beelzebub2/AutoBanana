@@ -19,6 +19,10 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 - **Run setup.bat**
 
 ```diff
+Pending Features:
+- Autoupdater
+- Select more games
+- Verify if game was installed 
 
 v1.2 17/06/24
 
