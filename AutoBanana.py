@@ -16,7 +16,6 @@ logging.basicConfig(filename='AutoBanana.log', level=logging.INFO,
 
 init(autoreset=True)
 
-
 class AutoBanana:
     def __init__(self):
         self.config = self.read_config()
