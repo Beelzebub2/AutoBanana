@@ -14,7 +14,6 @@ from colorama import init, Fore, Style
 logging.basicConfig(filename='AutoBanana.log', level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
 init(autoreset=True)
 
-
 class AutoBanana:
     def __init__(self):
         self.config = self.read_config()
