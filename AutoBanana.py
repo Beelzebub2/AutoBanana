@@ -44,8 +44,7 @@ class AutoBanana:
 
             if existing_value == script_path:
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"{Fore.YELLOW}{
-                      timestamp} - {Fore.YELLOW}Already on startup")
+                print(f"{Fore.YELLOW}{timestamp} - {Fore.YELLOW}Already on startup")
             else:
                 reg.SetValueEx(open_key, 'OpenBanana', 0,
                                reg.REG_SZ, script_path)
