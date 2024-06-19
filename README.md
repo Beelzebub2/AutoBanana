@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v1.1-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v1.3-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 # AutoBanana
@@ -19,6 +19,12 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 - **Run setup.bat**
 
 ```diff
+
+v1.3 19/06/24
+
+
++   Now checks if game was installed correctly
++   Code rework
 
 v1.2 17/06/24
 
