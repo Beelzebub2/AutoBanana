@@ -27,6 +27,7 @@ Pending Features:
 
 v1.4 20/06/24
 
++   Added total games count to UI
 +   Added multiple games support
 -   Removed install verification
 
