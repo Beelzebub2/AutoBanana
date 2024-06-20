@@ -23,7 +23,6 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 ```diff
 Pending Features:
 ! Autoupdater
-! Select more games
 
 v1.4 20/06/24
 
