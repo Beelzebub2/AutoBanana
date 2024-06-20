@@ -10,6 +10,8 @@ from datetime import datetime
 import winreg as reg
 import psutil
 from colorama import init, Fore, Style
+import threading
+
 
 logging.basicConfig(filename='AutoBanana.log', level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
 init(autoreset=True)
@@ -26,9 +28,11 @@ class AutoBanana:
         return {
             'run_on_startup': config['Settings'].getboolean('run_on_startup', fallback=False),
             'steam_path': config['Settings'].get('steam_path', ''),
+            'games': [game.strip() for game in config['Settings'].get('games', '').split(',')],
             'time_to_wait': config['Settings'].getint('time_to_wait', fallback=20),
-            'install_game': config['Settings'].getboolean('install_game', fallback=False)
         }
+
+
 
     def add_to_startup(self):
         script_path = os.path.abspath(sys.argv[0])
@@ -60,54 +64,47 @@ class AutoBanana:
         except Exception as e:
             logging.error(f"Failed to remove from startup: {e}")
 
-    def open_program(self, time_to_wait):
+    def open_games(self, time_to_wait):
+        def open_single_game(game_id):
+            try:
+                steam_run_url = f"steam://rungameid/{game_id}"
+                webbrowser.open(steam_run_url)
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                logging.info(f"{timestamp} - Opened {steam_run_url}")
+                print(f"{Fore.YELLOW}{timestamp} - {Fore.GREEN}Opened {steam_run_url}")
+                time.sleep(time_to_wait)
+                self.close_program("Banana.exe")
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                log_message = f"{timestamp} - Closed {steam_run_url}\n"
+                logging.info(log_message.strip())
+                print(f"{Fore.YELLOW}{timestamp} - {Fore.RED}Closed {steam_run_url}")
+            except Exception as e:
+                logging.error(f"Failed to open or close the game: {e}")
+
         try:
             self.clear_console()
             with open("logo.txt", 'r', encoding='utf-8') as file:
                 logo = file.read()
             print(self.fire(logo))
-            steam_run_url = "steam://rungameid/2923300"
-            webbrowser.open(steam_run_url)
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            logging.info(f"{timestamp} - Opened {steam_run_url}")
-            print(f"{Fore.YELLOW}{timestamp} - {Fore.GREEN}Opened {steam_run_url}")
-            time.sleep(time_to_wait)
-            self.close_program("Banana.exe")
-            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            log_message = f"{timestamp} - Closed {steam_run_url}\n"
-            logging.info(log_message.strip())
-            print(f"{Fore.YELLOW}{timestamp} - {Fore.RED}Closed {steam_run_url}")
+            
+            threads = []
+            for game_id in self.config['games']:
+                thread = threading.Thread(target=open_single_game, args=(game_id,))
+                thread.start()
+                threads.append(thread)
+            
+            for thread in threads:
+                thread.join()
         except Exception as e:
             logging.error(f"Failed to open or close the game: {e}")
+
+
 
     def close_program(self, process_name):
         for proc in psutil.process_iter(['pid', 'name']):
             if proc.info['name'] == process_name:
                 proc.terminate()
-                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                print(f"{Fore.YELLOW}{timestamp} - Terminated {Fore.CYAN + process_name} with PID {Fore.MAGENTA}{proc.info['pid']}")
                 break
-
-    def install_game(self, steam_path):
-        steam_install_url = "steam://install/2923300"
-        try:
-            webbrowser.open(steam_install_url)
-            logging.info(f"Triggered installation of game from Steam: {steam_install_url}")
-            print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Triggered installation of game from Steam")
-            banana_folder_path = os.path.join(steam_path, "banana")
-            while not os.path.exists(banana_folder_path):
-                print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.CYAN}Searching for 'banana' folder at {banana_folder_path}", end='\r')
-                time.sleep(5)
-            print(f"\nFound the 'banana' folder at {banana_folder_path}")
-            time.sleep(3)
-            config = configparser.ConfigParser()
-            config.read('config.ini')
-            config.set('Settings', 'install_game', 'False')
-            with open('config.ini', 'w') as configfile:
-                config.write(configfile)
-                logging.info("Updated install_game parameter in config.ini to False after installation.")
-        except Exception as e:
-            logging.error(f"Failed to trigger game installation: {e}")
 
     def clear_console(self):
         if os.name == 'nt':
@@ -162,11 +159,9 @@ class AutoBanana:
             self.add_to_startup()
         else:
             self.remove_from_startup()
-        if self.config['install_game']:
-            self.install_game(self.config['steam_path'])
 
         while True:
-            self.open_program(self.config['time_to_wait'])
+            self.open_games(self.config['time_to_wait'])
             self.game_open_count += 1
             self.countdown(3 * 60 * 60)
 

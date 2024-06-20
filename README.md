@@ -1,22 +1,22 @@
-![Static Badge](https://img.shields.io/badge/Version-v1.3-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v1.4-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 # AutoBanana
 
-AutoBanana is an automated script designed to manage the opening and closing of a specific game through Steam. The primary features of AutoBanana include:
+AutoBanana is an automated script designed to manage the opening and closing of games through Steam. The primary features of AutoBanana include:
 
 ### Features
 - **Automatic Startup:** Configure the script to run on system startup, ensuring the game is managed without user intervention.
 - **Timed Execution:** Opens the game using the Steam URL (`steam://rungameid/2923300`) and waits for a specified duration before closing it. This cycle repeats every three hours.
-- **Steam Installation Trigger:** Triggers the installation of the game via Steam if it's not already installed.
 - **Logging:** Logs all actions, including game opening, closing, and startup configurations, for easy monitoring and debugging.
 - **Startup Management:** Easily add or remove AutoBanana from the Windows startup sequence.
 - **Customizable Configurations:** Customize settings like program path, time to wait, and installation trigger through a `config.ini` file.
 
 ### Installation
 
-- **Install python**  
+- **Install python**  Make sure to add python to PATH it's an option when installing!
 - **Run setup.bat**
+- **Insert game ID's into the config file separated by a comma ','** (you can find the ids on the game properties under the updates page on library or steam shop link)
 
 ```diff
 Pending Features:
@@ -24,8 +24,12 @@ Pending Features:
 ! Select more games
 ! Verify if game was installed 
 
-v1.3 19/06/24
+v1.4 20/06/24
 
++   Added multiple games support
+-   Removed install verification
+
+v1.3 19/06/24
 
 +   Now checks if game was installed correctly
 +   Code rework
