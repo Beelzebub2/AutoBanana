@@ -24,7 +24,6 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 Pending Features:
 ! Autoupdater
 ! Select more games
-! Verify if game was installed 
 
 v1.3 19/06/24
 
