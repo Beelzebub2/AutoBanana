@@ -1,6 +1,8 @@
 ![Static Badge](https://img.shields.io/badge/Version-v1.4-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
+![User Count](https://img.shields.io/badge/Total%20Users-23-green?style=for-the-badge)
+
 # AutoBanana
 
 AutoBanana is an automated script designed to manage the opening and closing of games through Steam. The primary features of AutoBanana include:
@@ -22,7 +24,6 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 Pending Features:
 ! Autoupdater
 ! Select more games
-! Verify if game was installed 
 
 v1.4 20/06/24
 
