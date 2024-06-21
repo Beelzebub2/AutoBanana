@@ -3,7 +3,8 @@
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-52-green?style=for-the-badge)
 
-# AutoBanana
+# AutoBanana  
+### Now supports multiple games!
 
 AutoBanana is an automated script designed to manage the opening and closing of games through Steam. The primary features of AutoBanana include:
 
