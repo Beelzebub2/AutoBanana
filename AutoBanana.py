@@ -6,7 +6,7 @@ import logging
 import configparser
 import uuid
 import requests
-from datetime import datetime
+from datetime import datetime, timedelta
 import winreg as reg
 import psutil
 from colorama import init, Fore, Style
@@ -63,8 +63,35 @@ class AutoBanana:
             logging.error("Startup entry not found, nothing to remove")
         except Exception as e:
             logging.error(f"Failed to remove from startup: {e}")
+    
+    def get_steam_games(self):
+        steam_path = self.config['steam_path']
+        games = {}
+
+        for game_dir in os.listdir(steam_path):
+            game_path = os.path.join(steam_path, game_dir)
+            if os.path.isdir(game_path):
+                for root, dirs, files in os.walk(game_path):
+                    for file in files:
+                        if file.endswith(".exe"):
+                            games[file] = game_dir
+        return games
+
+    
 
     def open_games(self, time_to_wait):
+        all_games = self.get_steam_games()
+        
+        def find_running_steam_games(steam_games):
+            running_games = []
+            for proc in psutil.process_iter(['pid', 'name', 'create_time']):
+                if proc.info['name'] in steam_games:
+                    start_time = datetime.fromtimestamp(proc.info['create_time'])
+                    current_time = datetime.now()
+                    process_age = current_time - start_time
+                    running_games.append((proc, start_time, process_age))
+            return running_games
+        
         def open_single_game(game_id):
             try:
                 steam_run_url = f"steam://rungameid/{game_id}"
@@ -72,14 +99,8 @@ class AutoBanana:
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 logging.info(f"{timestamp} - Opened {steam_run_url}")
                 print(f"{Fore.YELLOW}{timestamp} - {Fore.GREEN}Opened {steam_run_url}")
-                time.sleep(time_to_wait)
-                self.close_program("Banana.exe")
-                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                log_message = f"{timestamp} - Closed {steam_run_url}\n"
-                logging.info(log_message.strip())
-                print(f"{Fore.YELLOW}{timestamp} - {Fore.RED}Closed {steam_run_url}")
             except Exception as e:
-                logging.error(f"Failed to open or close the game: {e}")
+                logging.error(f"Failed to open the game: {e}")
 
         try:
             self.clear_console()
@@ -87,17 +108,31 @@ class AutoBanana:
                 logo = file.read()
             print(self.fire(logo))
             
-            threads = []
             for game_id in self.config['games']:
-                thread = threading.Thread(target=open_single_game, args=(game_id,))
-                thread.start()
-                threads.append(thread)
+                open_single_game(game_id)
             
-            for thread in threads:
-                thread.join()
+            time.sleep(time_to_wait)
+            
+            running_games = find_running_steam_games(all_games)
+            self.close_games(running_games)
         except Exception as e:
             logging.error(f"Failed to open or close the game: {e}")
 
+
+    def close_games(self, running_games):
+        threshold_minutes = 1.5
+        current_time = datetime.now()
+        
+        for proc, start_time, process_age in running_games:
+            try:
+                if process_age < timedelta(minutes=threshold_minutes):
+                    proc.terminate()
+                    proc.wait()
+                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    logging.info(f"{timestamp} - Closed {proc.info['name']} (PID: {proc.info['pid']})")
+                    print(f"{Fore.YELLOW}{timestamp} - {Fore.RED}Closed {proc.info['name']} (PID: {proc.info['pid']})")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
 
 
     def close_program(self, process_name):

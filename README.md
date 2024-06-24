@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v1.4-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v1.5-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-83-green?style=for-the-badge)
@@ -24,6 +24,11 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 ```diff
 Pending Features:
 ! Autoupdater
+
+v1.5 24/06/24
+
+
++   Actually closes the other games now
 
 v1.4 20/06/24
 

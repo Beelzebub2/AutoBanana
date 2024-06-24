@@ -155,3 +155,4 @@ dmypy.json
 cython_debug/
 usage_logged.txt
 user_id.txt
+test.py
