@@ -1,3 +1,4 @@
 psutil
 colorama
 requests
+vdf==3.4

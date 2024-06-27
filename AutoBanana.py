@@ -11,6 +11,7 @@ import winreg as reg
 import psutil
 from colorama import init, Fore, Style
 import threading
+import vdf
 
 
 logging.basicConfig(filename='AutoBanana.log', level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,13 +22,13 @@ class AutoBanana:
         self.config = self.read_config()
         self.start_time = datetime.now()
         self.game_open_count = 0
+        self.steam_install_location = self.get_steam_install_location()
 
     def read_config(self):
         config = configparser.ConfigParser()
         config.read('config.ini')
         return {
             'run_on_startup': config['Settings'].getboolean('run_on_startup', fallback=False),
-            'steam_path': config['Settings'].get('steam_path', ''),
             'games': [game.strip() for game in config['Settings'].get('games', '').split(',')],
             'time_to_wait': config['Settings'].getint('time_to_wait', fallback=20),
         }
@@ -63,19 +64,87 @@ class AutoBanana:
         except Exception as e:
             logging.error(f"Failed to remove from startup: {e}")
 
+    def get_steam_install_location(self):
+        steam_key = reg.OpenKey(
+            reg.HKEY_LOCAL_MACHINE,
+            "SOFTWARE\Wow6432Node\Valve\Steam",
+        )
+
+        steam_install_location = reg.QueryValueEx(steam_key, "InstallPath")[0]
+
+        reg.CloseKey(steam_key)
+
+        return steam_install_location
+
+    # Return the install path of the game
+    def get_game_install_path(self, app_id):
+        # Check if the game is installed in Steam
+        steam_apps_path = os.path.join(self.steam_install_location, "steamapps")
+
+        for root, dirs, files in os.walk(steam_apps_path):
+            for file in files:
+                if file == "appmanifest_" + app_id + ".acf":
+                    with open(os.path.join(root, file), "r") as f:
+                        manifest = vdf.load(f)
+
+                        install_location = os.path.join(
+                            steam_apps_path, "common", manifest["AppState"]["installdir"]
+                        )
+
+                    # Check if install location exists
+                    if os.path.exists(install_location):
+                        return install_location
+
+        # If not, check the library folders
+        library_folders = os.path.join(
+            self.steam_install_location, "steamapps", "libraryfolders.vdf"
+        )
+
+        # Find app id in library folders
+        with open(library_folders, "r") as f:
+            library = vdf.load(f)
+
+            for key in library["libraryfolders"]:
+                if key == "0":
+                    continue
+
+                library_path = library["libraryfolders"][key]["path"]
+                apps = library["libraryfolders"][key]["apps"]
+
+                if app_id in apps:
+                    for root, dirs, files in os.walk(
+                        os.path.join(library_path, "steamapps")
+                    ):
+                        for file in files:
+                            if file == "appmanifest_" + app_id + ".acf":
+                                with open(os.path.join(root, file), "r") as f:
+                                    manifest = vdf.load(f)
+
+                                    install_location = os.path.join(
+                                        library_path,
+                                        "steamapps",
+                                        "common",
+                                        manifest["AppState"]["installdir"],
+                                    )
+
+                                    # Check if install location exists
+                                    if os.path.exists(install_location):
+                                        return install_location
+
+        return None
+
     def get_steam_games(self):
-        steam_path = self.config['steam_path']
         games = {}
 
-        for game_dir in os.listdir(steam_path):
-            game_path = os.path.join(steam_path, game_dir)
-            if os.path.isdir(game_path):
-                for root, dirs, files in os.walk(game_path):
+        for game_id in self.config['games']:
+            install_path = self.get_game_install_path(game_id)
+            if install_path:
+                for _, _, files in os.walk(install_path):
                     for file in files:
-                        if file.endswith(".exe"):
-                            games[file] = game_dir
-        return games
+                        if file.endswith(".exe") and file != "UnityCrashHandler64.exe" and file != "UnityCrashHandler32.exe":
+                            games[file] = install_path
 
+        return games
 
 
     def open_games(self, time_to_wait):
