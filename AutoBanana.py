@@ -44,8 +44,7 @@ class AutoBanana:
                     reg.SetValueEx(open_key, 'OpenBanana', 0, reg.REG_SZ, script_path)
                     logging.info("Successfully added to startup")
                 else:
-                    print(f"{Fore.YELLOW}{datetime.now().strftime(
-                        '%Y-%m-%d %H:%M:%S')} - Already on startup")
+                    print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Already on startup")
         except FileNotFoundError:
             with reg.OpenKey(reg.HKEY_CURRENT_USER, key_value, 0, reg.KEY_ALL_ACCESS) as open_key:
                 reg.SetValueEx(open_key, 'OpenBanana', 0, reg.REG_SZ, script_path)
@@ -63,7 +62,7 @@ class AutoBanana:
             logging.error("Startup entry not found, nothing to remove")
         except Exception as e:
             logging.error(f"Failed to remove from startup: {e}")
-    
+
     def get_steam_games(self):
         steam_path = self.config['steam_path']
         games = {}
@@ -77,11 +76,11 @@ class AutoBanana:
                             games[file] = game_dir
         return games
 
-    
+
 
     def open_games(self, time_to_wait):
         all_games = self.get_steam_games()
-        
+
         def find_running_steam_games(steam_games):
             running_games = []
             for proc in psutil.process_iter(['pid', 'name', 'create_time']):
@@ -91,7 +90,7 @@ class AutoBanana:
                     process_age = current_time - start_time
                     running_games.append((proc, start_time, process_age))
             return running_games
-        
+
         def open_single_game(game_id):
             try:
                 steam_run_url = f"steam://rungameid/{game_id}"
@@ -107,12 +106,12 @@ class AutoBanana:
             with open("logo.txt", 'r', encoding='utf-8') as file:
                 logo = file.read()
             print(self.fire(logo))
-            
+
             for game_id in self.config['games']:
                 open_single_game(game_id)
-            
+
             time.sleep(time_to_wait)
-            
+
             running_games = find_running_steam_games(all_games)
             self.close_games(running_games)
         except Exception as e:
@@ -122,7 +121,7 @@ class AutoBanana:
     def close_games(self, running_games):
         threshold_minutes = 1.5
         current_time = datetime.now()
-        
+
         for proc, start_time, process_age in running_games:
             try:
                 if process_age < timedelta(minutes=threshold_minutes):
@@ -154,7 +153,7 @@ class AutoBanana:
             fade += f"\033[38;2;255;{green};0m{line}\033[0m\n"
             green = max(0, green - 25)
         return fade
-    
+
     def countdown(self, seconds):
         while seconds:
             uptime = datetime.now() - self.start_time
