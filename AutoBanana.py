@@ -22,6 +22,7 @@ class AutoBanana:
         self.config = self.read_config()
         self.start_time = datetime.now()
         self.game_open_count = 0
+        self.steam_install_location = self.get_steam_install_location()
 
     def read_config(self):
         config = configparser.ConfigParser()
@@ -63,9 +64,7 @@ class AutoBanana:
         except Exception as e:
             logging.error(f"Failed to remove from startup: {e}")
 
-    # Return the install path of the game
-    def get_game_install_path(self, app_id):
-        # Get steam install location
+    def get_steam_install_location(self):
         steam_key = reg.OpenKey(
             reg.HKEY_LOCAL_MACHINE,
             "SOFTWARE\Wow6432Node\Valve\Steam",
@@ -75,8 +74,12 @@ class AutoBanana:
 
         reg.CloseKey(steam_key)
 
+        return steam_install_location
+
+    # Return the install path of the game
+    def get_game_install_path(self, app_id):
         # Check if the game is installed in Steam
-        steam_apps_path = os.path.join(steam_install_location, "steamapps")
+        steam_apps_path = os.path.join(self.steam_install_location, "steamapps")
 
         for root, dirs, files in os.walk(steam_apps_path):
             for file in files:
@@ -94,7 +97,7 @@ class AutoBanana:
 
         # If not, check the library folders
         library_folders = os.path.join(
-            steam_install_location, "steamapps", "libraryfolders.vdf"
+            self.steam_install_location, "steamapps", "libraryfolders.vdf"
         )
 
         # Find app id in library folders
