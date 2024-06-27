@@ -109,6 +109,7 @@ class AutoBanana:
 
             for game_id in self.config['games']:
                 open_single_game(game_id)
+                time.sleep(1)
 
             time.sleep(time_to_wait)
 
