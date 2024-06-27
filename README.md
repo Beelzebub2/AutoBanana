@@ -25,8 +25,14 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 Pending Features:
 ! Autoupdater
 
-v1.5 24/06/24
+v1.6 27/06/24 Thank you guys :)
 
++  Actually opens all games, thanks to @SavageCore
++  Improved get_steam_games, thanks to @SavageCore
++  Fixed startup error, thanks to @SavageCore
++  More games like banana in the config thanks to @Gesugao-san
+
+v1.5 24/06/24
 
 +   Actually closes the other games now
 
