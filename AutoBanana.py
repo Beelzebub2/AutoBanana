@@ -67,7 +67,7 @@ class AutoBanana:
     def get_steam_install_location(self):
         steam_key = reg.OpenKey(
             reg.HKEY_LOCAL_MACHINE,
-            "SOFTWARE\Wow6432Node\Valve\Steam",
+            r"SOFTWARE\Wow6432Node\Valve\Steam",
         )
 
         steam_install_location = reg.QueryValueEx(steam_key, "InstallPath")[0]
