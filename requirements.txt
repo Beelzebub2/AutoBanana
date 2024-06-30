@@ -1,4 +1,4 @@
-psutil
-colorama
-requests
+psutil==6.0.0
+colorama==0.4.6
+requests==2.32.3
 vdf==3.4
