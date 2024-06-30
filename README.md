@@ -3,7 +3,7 @@
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-160-green?style=for-the-badge)
 
-# AutoBanana  
+# AutoBanana
 ### Now supports multiple games!
 
 AutoBanana is an automated script designed to manage the opening and closing of games through Steam. The primary features of AutoBanana include:
@@ -17,9 +17,39 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 
 ### Installation
 
+You can find the latest releases [here](https://github.com/Beelzebub2/AutoBanana/releases).
+
+Simply download and run `AutoBanana-win64.exe`
+
+### Manual Installation
+
+- **Download the repository:** [here](https://github.com/Beelzebub2/AutoBanana/archive/refs/heads/main.zip)
+- **Extract the contents of the zip file**
 - **Install python**  Make sure to add python to PATH it's an option when installing!
 - **Run setup.bat**
 - **Insert game ID's into the config file separated by a comma ','** (you can find the ids on the game properties under the updates page on library or steam shop link)
+
+### Development
+
+- **Clone the repository:** `git clone https://github.com/Beelzebub2/AutoBanana/`
+- **Navigate to the project directory:** `cd AutoBanana`
+- **Install dependencies:**
+```
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+- **Run the script:** `python AutoBanana.py`
+
+### Manually Building
+
+- **Navigate to the project directory:** `cd AutoBanana`
+- **Build with pyinstaller:** `pyinstaller -F -n AutoBanana-win64 AutoBanana.py`
+
+### Releasing
+
+- Push a tag with the version number starting with `v` and GitHub Actions will automatically build the release and upload it to the releases page as a draft.
+
+### Release Notes
 
 ```diff
 Pending Features:

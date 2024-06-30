@@ -10,8 +10,7 @@ from datetime import datetime, timedelta
 import winreg as reg
 import psutil
 from colorama import init, Fore, Style
-import threading
-import vdf
+import vdf  # type: ignore
 
 
 logging.basicConfig(filename='AutoBanana.log', level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,6 +25,14 @@ class AutoBanana:
 
     def read_config(self):
         config = configparser.ConfigParser()
+
+        # Check if the config file exists, if not download it from the repository
+        if not os.path.exists("config.ini"):
+            config_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/config.ini"
+            response = requests.get(config_url)
+            with open("config.ini", 'w') as file:
+                file.write(response.text)
+
         config.read('config.ini')
         return {
             'run_on_startup': config['Settings'].getboolean('run_on_startup', fallback=False),
@@ -172,6 +179,13 @@ class AutoBanana:
 
         try:
             self.clear_console()
+            # If the logo file is not found, download it from the repository
+            if not os.path.exists("logo.txt"):
+                logo_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/logo.txt"
+                response = requests.get(logo_url)
+                with open("logo.txt", 'w', encoding='utf-8') as file:
+                    file.write(response.text)
+
             with open("logo.txt", 'r', encoding='utf-8') as file:
                 logo = file.read()
             print(self.fire(logo))
@@ -190,7 +204,6 @@ class AutoBanana:
 
     def close_games(self, running_games):
         threshold_minutes = 1.5
-        current_time = datetime.now()
 
         for proc, start_time, process_age in running_games:
             try:
