@@ -1,7 +1,7 @@
 ![Static Badge](https://img.shields.io/badge/Version-v1.6-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
-![User Count](https://img.shields.io/badge/Total%20Users-173-green?style=for-the-badge)
+![User Count](https://img.shields.io/badge/Total%20Users-174-green?style=for-the-badge)
 
 # AutoBanana
 ### Now supports multiple games!
