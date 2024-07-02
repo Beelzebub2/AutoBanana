@@ -269,6 +269,7 @@ class AutoBanana:
                 logging.error(f"{timestamp} - Failed to log usage.")
         else:
             print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Usage already logged.")
+    
 
     def main(self):
         self.register()
@@ -282,8 +283,25 @@ class AutoBanana:
             self.game_open_count += 1
             self.countdown(3 * 60 * 60)
 
+def download_config():
+        base_url = f"https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/config.ini"
+        local_filename = os.path.join(os.getcwd(), os.path.basename("config.ini"))
+
+        try:
+            response = requests.get(base_url)
+            response.raise_for_status()  # Check if the request was successful
+
+            with open(local_filename, 'wb') as file:
+                file.write(response.content)
+
+            print(f"Downloaded {local_filename}")
+
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to download {"config.ini"} from GitHub: {e}")
 
 if __name__ == "__main__":
+    if not os.path.exists("config.ini"):
+        download_config()
     auto_banana = AutoBanana()
     auto_banana.main()
     input(Fore.CYAN + "\nPress Enter to exit..." + Style.RESET_ALL)

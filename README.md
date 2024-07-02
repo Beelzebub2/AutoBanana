@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v1.6-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v1.7-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-180-green?style=for-the-badge)
@@ -43,7 +43,7 @@ pip install -r requirements-dev.txt
 ### Manually Building
 
 - **Navigate to the project directory:** `cd AutoBanana`
-- **Build with pyinstaller:** `pyinstaller -F -n AutoBanana-win64 AutoBanana.py`
+- **Build with pyinstaller:** `pyinstaller -F -n AutoBanana-win64 -i banana.ico AutoBanana.py`
 
 ### Releasing
 
@@ -54,6 +54,12 @@ pip install -r requirements-dev.txt
 ```diff
 Pending Features:
 ! Autoupdater
+
+v1.7 02/07/24
+
++  Now Downloads the config.ini if it's missing
++  Executable version available
++  Now adds icon to executable
 
 v1.6 27/06/24 Thank you guys :)
 
