@@ -12,12 +12,19 @@ import psutil
 from colorama import init, Fore, Style
 import vdf  # type: ignore
 
-
-logging.basicConfig(filename='AutoBanana.log', level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
 init(autoreset=True)
 
 class AutoBanana:
     def __init__(self):
+        self.appdata_path = os.path.join(os.getenv("APPDATA"), "AutoBanana")
+        if not os.path.exists(self.appdata_path):
+            os.makedirs(self.appdata_path)
+        self.logo_file = os.path.join(self.appdata_path, "logo.txt")
+        self.user_id_file = os.path.join(self.appdata_path, "user_id.txt")
+        self.usage_logged_file = os.path.join(self.appdata_path, "usage_logged.txt")
+
+        logging.basicConfig(filename=os.path.join(self.appdata_path, "AutoBanana.log"), level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
+
         self.config = self.read_config()
         self.start_time = datetime.now()
         self.game_open_count = 0
@@ -180,13 +187,13 @@ class AutoBanana:
         try:
             self.clear_console()
             # If the logo file is not found, download it from the repository
-            if not os.path.exists("logo.txt"):
+            if not os.path.exists(self.logo_file):
                 logo_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/logo.txt"
                 response = requests.get(logo_url)
-                with open("logo.txt", 'w', encoding='utf-8') as file:
+                with open(self.logo_file, 'w', encoding='utf-8') as file:
                     file.write(response.text)
 
-            with open("logo.txt", 'r', encoding='utf-8') as file:
+            with open(self.logo_file, 'r', encoding='utf-8') as file:
                 logo = file.read()
             print(self.fire(logo))
 
@@ -250,26 +257,26 @@ class AutoBanana:
 
     def register(self):
         try:
-            with open('user_id.txt', 'r') as file:
+            with open(self.user_id_file, 'r') as file:
                 user_id = file.read()
         except FileNotFoundError:
             user_id = str(uuid.uuid4())
-            with open('user_id.txt', 'w') as file:
+            with open(self.user_id_file, 'w') as file:
                 file.write(user_id)
 
-        if not os.path.exists('usage_logged.txt'):
+        if not os.path.exists(self.usage_logged_file):
             web_app_url = 'https://script.google.com/macros/s/AKfycbxKQlXPVPq38RxqaqtOwGWTgpmNQIZyu2q2aAH5mSsvxlCiRe9jToIzv7yBA8kZECZ0/exec'
             response = requests.post(web_app_url, data={'user_id': user_id})
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             if response.status_code == 200:
-                with open('usage_logged.txt', 'w') as file:
+                with open(self.usage_logged_file, 'w') as file:
                     file.write('logged')
                 print(f"{Fore.YELLOW}{timestamp} - {Fore.GREEN}Usage logged successfully.")
             else:
                 logging.error(f"{timestamp} - Failed to log usage.")
         else:
             print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Usage already logged.")
-    
+
 
     def main(self):
         self.register()
