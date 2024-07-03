@@ -55,6 +55,7 @@ pip install -r requirements-dev.txt
 ```diff
 Pending Features:
 ! Autoupdater
+! Remove games that are not installed from config.ini
 
 v1.8 03/07/24
 
