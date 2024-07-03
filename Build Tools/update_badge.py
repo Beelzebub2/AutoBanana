@@ -17,7 +17,7 @@ def main(version):
 
     # Read the README.md file
     try:
-        with open("README.md", "r") as file:
+        with open("../README.md", "r") as file:
             readme_content = file.read()
     except FileNotFoundError:
         print("README.md file not found.")
@@ -28,7 +28,7 @@ def main(version):
                              new_badge, readme_content)
 
     # Write the updated content back to README.md
-    with open("README.md", "w") as file:
+    with open("../README.md", "w") as file:
         file.write(updated_content)
 
     print("The updated badge URL has been saved to README.md.")

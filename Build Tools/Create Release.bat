@@ -66,6 +66,5 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo Tag %version% has been successfully managed.
-echo Press any key to exit...
-pause >nul
+echo Finished build process for %version%.
+
