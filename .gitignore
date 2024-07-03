@@ -155,9 +155,4 @@ dmypy.json
 cython_debug/
 usage_logged.txt
 user_id.txt
-test.py
-Create Release.bat
-test.bat
-update_badge.py
-buildexe.bat
 .vscode
