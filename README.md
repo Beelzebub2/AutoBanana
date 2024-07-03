@@ -19,7 +19,8 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 
 You can find the latest releases [here](https://github.com/Beelzebub2/AutoBanana/releases).
 
-Simply download and run `AutoBanana-win64.exe`
+Simply download and run `AutoBanana-win64.exe` 
+#### I am aware of the false positive on the windows defender and working on a solution  
 
 ### Manual Installation
 
