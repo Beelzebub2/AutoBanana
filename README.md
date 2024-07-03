@@ -59,7 +59,7 @@ v1.8 03/07/24
 
 !   Started looking for ways to fix false positive on executable
 +   Removed a duplicate function
-+   Added docummentation to functions (generated with Mintlify Doc Writer)
++   Added documentation to functions (generated with Mintlify Doc Writer)
 
 v1.7 02/07/24
 
