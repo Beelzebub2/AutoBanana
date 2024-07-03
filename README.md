@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v1.7-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v1.8-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-201-green?style=for-the-badge)
@@ -54,6 +54,12 @@ pip install -r requirements-dev.txt
 ```diff
 Pending Features:
 ! Autoupdater
+
+v1.8 03/07/24
+
+!   Started looking for ways to fix false positive on executable
++   Removed a duplicate function
++   Added docummentation to functions (generated with Mintlify Doc Writer)
 
 v1.7 02/07/24
 
