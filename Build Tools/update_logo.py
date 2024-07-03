@@ -177,5 +177,3 @@ if __name__ == "__main__":
     file_path = '../logo.txt'
     with open(file_path, 'w', encoding="utf-8") as file:
         file.write(result)
-
-    print(f"Blocky ASCII art has been written to {file_path}")
