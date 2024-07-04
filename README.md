@@ -48,7 +48,7 @@ pip install -r requirements-dev.txt
 
 ### Releasing
 
-- Push a tag with the version number starting with `v` and GitHub Actions will automatically build the release and upload it to the releases page as a draft.
+- Push a tag with the version number starting with `v` and GitHub Actions will automatically build the release and upload it to the releases page.
 
 ### Release Notes
 
