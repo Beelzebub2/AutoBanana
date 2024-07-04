@@ -54,7 +54,10 @@ pip install -r requirements-dev.txt
 
 ```diff
 Pending Features:
-! Autoupdater
+!   Autoupdater
+!   Add more themes
+!   Add option to trigger game install thourgh steam://install/gameid with a Xseconds delay 
+!   Fix executable false positive on antivirus
 
 v1.9 04/07/24
 
