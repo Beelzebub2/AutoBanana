@@ -17,18 +17,68 @@ init(autoreset=True)
 class AutoBanana:
     def __init__(self):
         self.appdata_path = os.path.join(os.getenv("APPDATA"), "AutoBanana")
+        self.base_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/"
         if not os.path.exists(self.appdata_path):
             os.makedirs(self.appdata_path)
+            
+        self.download_file_if_not_exists("logo.txt", ".")
+        if os.path.exists("logo.txt") and os.path.exists(self.appdata_path):
+            os.replace("logo.txt", os.path.join(self.appdata_path, "logo.txt"))
+
         self.logo_file = os.path.join(self.appdata_path, "logo.txt")
         self.user_id_file = os.path.join(self.appdata_path, "user_id.txt")
         self.usage_logged_file = os.path.join(self.appdata_path, "usage_logged.txt")
 
         logging.basicConfig(filename=os.path.join(self.appdata_path, "AutoBanana.log"), level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
-
+        
         self.config = self.read_config()
         self.start_time = datetime.now()
         self.game_open_count = 0
         self.steam_install_location = self.get_steam_install_location()
+        # Update config to remove games not installed
+        self.update_config_file()
+        self.config = self.read_config()
+
+        
+
+    def download_file_if_not_exists(self, file_name, directory):
+        '''The function `download_file_if_not_exists` downloads a file from a URL to a specified directory
+        if the file does not already exist in that directory.
+        
+        Parameters
+        ----------
+        file_name
+            The `file_name` parameter in the `download_file_if_not_exists` function represents the name of
+        the file that you want to download. It is the name of the file that will be used both in the URL
+        to download the file and as the name of the file when saved in the specified directory
+        directory
+            The `directory` parameter in the `download_file_if_not_exists` function refers to the directory
+        where the file will be saved or checked for existence. If the directory does not exist, the
+        function will create it before proceeding with downloading or checking the file.
+        
+        '''
+        # Create the directory if it doesn't exist
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        
+        file_path = os.path.join(directory, file_name)
+        
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            # Construct the full URL
+            file_url = os.path.join(self.base_url, file_name)
+            
+            # Download the file
+            response = requests.get(file_url)
+            response.raise_for_status()  # Raise an error if the request failed
+            
+            # Save the file
+            with open(file_path, 'w', encoding="utf-8") as file:
+                file.write(response.text)
+            
+            logging.info(f"{file_name} has been downloaded to {directory}.")
+        else:
+           logging.info(f"{file_name} already exists in {directory}.")
 
     def read_config(self):
         '''The `read_config` function reads a configuration file, downloads it from a repository if it
@@ -43,14 +93,7 @@ class AutoBanana:
         
         '''
         config = configparser.ConfigParser()
-
-        # Check if the config file exists, if not download it from the repository
-        if not os.path.exists("config.ini"):
-            config_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/config.ini"
-            response = requests.get(config_url)
-            with open("config.ini", 'w') as file:
-                file.write(response.text)
-                file.close()
+        self.download_file_if_not_exists("config.ini", ".")
 
         config.read('config.ini')
         return {
@@ -216,6 +259,20 @@ class AutoBanana:
 
         return games
 
+    def update_config_file(self):
+        '''The function updates a configuration file by removing any games that are not installed from the
+        list of games.
+        '''
+        self.config = self.read_config()
+        games = self.config['games']
+        installed_games = [game for game in games if self.get_game_install_path(game.strip())]
+
+        config_parser = configparser.ConfigParser()
+        config_parser.read("config.ini")
+        config_parser.set("Settings", "games", ",".join(installed_games))
+
+        with open("config.ini", "w") as configfile:
+            config_parser.write(configfile)
 
     def open_games(self, time_to_wait):
         '''The `open_games` function in Python opens Steam games, logs the action, and checks for running
@@ -281,13 +338,6 @@ class AutoBanana:
 
         try:
             self.clear_console()
-            # If the logo file is not found, download it from the repository
-            if not os.path.exists(self.logo_file):
-                logo_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/logo.txt"
-                response = requests.get(logo_url)
-                with open(self.logo_file, 'w', encoding='utf-8') as file:
-                    file.write(response.text)
-
             with open(self.logo_file, 'r', encoding='utf-8') as file:
                 logo = file.read()
             print(self.fire(logo))
@@ -447,6 +497,8 @@ class AutoBanana:
 
 
 if __name__ == "__main__":
-    auto_banana = AutoBanana()
-    auto_banana.main()
-    input(Fore.CYAN + "\nPress Enter to exit..." + Style.RESET_ALL)
+    try:
+        auto_banana = AutoBanana()
+        auto_banana.main()
+    except KeyboardInterrupt:
+        print(f"{Fore.LIGHTGREEN_EX}\nProgram exited gracefully.")

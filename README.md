@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v1.8-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v1.9-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-201-green?style=for-the-badge)
@@ -55,7 +55,12 @@ pip install -r requirements-dev.txt
 ```diff
 Pending Features:
 ! Autoupdater
-! Automatically remove games that are not installed from config.ini
+
+v1.9 04/07/24
+
++   Added function to download missing files
++   Automatically removes games that are not installed from config.ini
++   Now detects Keyboard interrupt
 
 v1.8 03/07/24
 
