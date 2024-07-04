@@ -18,11 +18,36 @@ if %errorlevel% neq 0 (
     echo Error updating badge.
     exit /b 1
 )
+
 :: Update the logo
-echo Updating badge in README.md...
+echo Updating logo in README.md...
 "%PYTHON_PATH%\python.exe" update_logo.py "autobanana %version%"
 if %errorlevel% neq 0 (
     echo Error updating logo.
+    exit /b 1
+)
+
+:: Stage the changes
+echo Staging changes...
+git add .
+if %errorlevel% neq 0 (
+    echo Error staging changes.
+    exit /b 1
+)
+
+:: Commit the changes with a message including the version number
+echo Committing changes...
+git commit -m "%version%"
+if %errorlevel% neq 0 (
+    echo Error committing changes.
+    exit /b 1
+)
+
+:: Push the commit to the remote repository
+echo Pushing commit to remote...
+git push
+if %errorlevel% neq 0 (
+    echo Error pushing commit to remote.
     exit /b 1
 )
 
@@ -62,9 +87,8 @@ if %errorlevel% neq 0 (
 echo Pushing tag %version% to remote...
 git push origin %version%
 if %errorlevel% neq 0 (
-    echo Error pushing tag %version% to remote
+    echo Error pushing tag %version% to remote.
     exit /b 1
 )
 
 echo Finished build process for %version%.
-
