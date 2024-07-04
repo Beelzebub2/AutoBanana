@@ -20,7 +20,7 @@ class AutoBanana:
         self.base_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/"
         if not os.path.exists(self.appdata_path):
             os.makedirs(self.appdata_path)
-            
+
         self.download_file_if_not_exists("logo.txt", ".")
         if os.path.exists("logo.txt") and os.path.exists(self.appdata_path):
             os.replace("logo.txt", os.path.join(self.appdata_path, "logo.txt"))
