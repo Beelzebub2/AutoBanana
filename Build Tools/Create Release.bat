@@ -29,10 +29,17 @@ if %errorlevel% neq 0 (
 
 :: Stage the changes
 echo Staging changes...
-git add .
+git add -A
 if %errorlevel% neq 0 (
     echo Error staging changes.
     exit /b 1
+)
+
+:: Check for changes before committing
+git diff-index --quiet HEAD --
+if %errorlevel% equ 0 (
+    echo No changes to commit.
+    exit /b 0
 )
 
 :: Commit the changes with a message including the version number

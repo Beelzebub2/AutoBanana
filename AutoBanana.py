@@ -501,4 +501,5 @@ if __name__ == "__main__":
         auto_banana = AutoBanana()
         auto_banana.main()
     except KeyboardInterrupt:
-        print(f"{Fore.LIGHTGREEN_EX}\nProgram exited gracefully.")
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"\n\n{Fore.YELLOW}{timestamp} - {Fore.LIGHTGREEN_EX}Program exited gracefully.")
