@@ -16,20 +16,15 @@ init(autoreset=True)
 
 class AutoBanana:
     def __init__(self):
-        self.appdata_path = os.path.join(os.getenv("APPDATA"), "AutoBanana")
         self.base_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/"
-        if not os.path.exists(self.appdata_path):
-            os.makedirs(self.appdata_path)
+
 
         self.download_file_if_not_exists("logo.txt", ".")
-        if os.path.exists("logo.txt") and os.path.exists(self.appdata_path):
-            os.replace("logo.txt", os.path.join(self.appdata_path, "logo.txt"))
+        self.logo_file = "logo.txt"
+        self.user_id_file = "user_id.txt"
+        self.usage_logged_file = "usage_logged.txt"
 
-        self.logo_file = os.path.join(self.appdata_path, "logo.txt")
-        self.user_id_file = os.path.join(self.appdata_path, "user_id.txt")
-        self.usage_logged_file = os.path.join(self.appdata_path, "usage_logged.txt")
-
-        logging.basicConfig(filename=os.path.join(self.appdata_path, "AutoBanana.log"), level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(filename="AutoBanana.log", level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
         
         self.config = self.read_config()
         self.start_time = datetime.now()
