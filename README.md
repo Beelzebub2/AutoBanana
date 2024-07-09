@@ -61,6 +61,7 @@ Pending Features:
 
 v2.0 09/07/24
 
++   Fixed check steam games location a bit more optimized
 +   Fixed logo.txt missing
 +   Fixed error with moving files across drives (by removing the necessity to do that)
 

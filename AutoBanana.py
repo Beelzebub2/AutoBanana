@@ -157,79 +157,68 @@ class AutoBanana:
         return steam_install_location
 
     def get_game_install_path(self, app_id):
-        '''This Python function searches for the installation path of a game using the provided app ID in
-        Steam directories.
+        '''
+        Searches for the installation path of a game using the provided app ID in Steam directories.
         
         Parameters
         ----------
-        app_id
-            The `get_game_install_path` function you provided is a method that helps retrieve the
-        installation path of a game based on its `app_id`. The function first checks if the game is
-        installed in the Steam directory and then searches through the library folders if it's not found
-        in the default location.
+        app_id : str
+            The Steam application ID of the game.
         
         Returns
         -------
-            The `get_game_install_path` function returns the installation path of a game with the specified
-        app ID. If the game is installed in Steam, it will search for the game in the Steam library
-        folders and return the installation path if found. If the game is not found in the Steam library
-        folders, it will return `None`.
-        
+        str or None
+            The installation path of the game if found, otherwise None.
         '''
-
-        # Check if the game is installed in Steam
         steam_apps_path = os.path.join(self.steam_install_location, "steamapps")
 
-        for root, dirs, files in os.walk(steam_apps_path):
-            for file in files:
-                if file == "appmanifest_" + app_id + ".acf":
-                    with open(os.path.join(root, file), "r") as f:
-                        manifest = vdf.load(f)
+        # Check the main steamapps directory first
+        install_path = self._check_app_manifest(steam_apps_path, app_id)
+        if install_path:
+            return install_path
 
-                        install_location = os.path.join(
-                            steam_apps_path, "common", manifest["AppState"]["installdir"]
-                        )
-
-                    # Check if install location exists
-                    if os.path.exists(install_location):
-                        return install_location
-
-        # If not, check the library folders
-        library_folders = os.path.join(
-            self.steam_install_location, "steamapps", "libraryfolders.vdf"
-        )
-
-        # Find app id in library folders
-        with open(library_folders, "r") as f:
-            library = vdf.load(f)
-
-            for key in library["libraryfolders"]:
+        # Check the library folders
+        library_folders_file = os.path.join(steam_apps_path, "libraryfolders.vdf")
+        if os.path.exists(library_folders_file):
+            with open(library_folders_file, "r") as f:
+                library_folders = vdf.load(f)["libraryfolders"]
+                
+            for key, library in library_folders.items():
                 if key == "0":
                     continue
 
-                library_path = library["libraryfolders"][key]["path"]
-                apps = library["libraryfolders"][key]["apps"]
+                library_path = os.path.join(library["path"], "steamapps")
+                install_path = self._check_app_manifest(library_path, app_id)
+                if install_path:
+                    return install_path
 
-                if app_id in apps:
-                    for root, dirs, files in os.walk(
-                        os.path.join(library_path, "steamapps")
-                    ):
-                        for file in files:
-                            if file == "appmanifest_" + app_id + ".acf":
-                                with open(os.path.join(root, file), "r") as f:
-                                    manifest = vdf.load(f)
+        return None
 
-                                    install_location = os.path.join(
-                                        library_path,
-                                        "steamapps",
-                                        "common",
-                                        manifest["AppState"]["installdir"],
-                                    )
-
-                                    # Check if install location exists
-                                    if os.path.exists(install_location):
-                                        return install_location
-
+    def _check_app_manifest(self, steam_apps_path, app_id):
+        """
+        Helper method to check for the app manifest and return the installation path if found.
+        
+        Parameters
+        ----------
+        steam_apps_path : str
+            Path to the steamapps directory.
+        app_id : str
+            The Steam application ID of the game.
+        
+        Returns
+        -------
+        str or None
+            The installation path of the game if found, otherwise None.
+        """
+        manifest_file = os.path.join(steam_apps_path, f"appmanifest_{app_id}.acf")
+        if os.path.exists(manifest_file):
+            with open(manifest_file, "r") as f:
+                manifest = vdf.load(f)
+                install_location = os.path.join(
+                    steam_apps_path, "common", manifest["AppState"]["installdir"]
+                )
+                if os.path.exists(install_location):
+                    return install_location
         return None
 
     def get_steam_games(self):
