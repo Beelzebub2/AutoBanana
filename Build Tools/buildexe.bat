@@ -1,1 +1,1 @@
-pyinstaller -F -n AutoBanana-win64 -i banana.ico ../AutoBanana.py
+pyinstaller -F -n AutoBanana-win64 -i ../banana.ico ../AutoBanana.py
