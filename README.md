@@ -59,7 +59,7 @@ Pending Features:
 !   Add option to trigger game install thourgh steam://install/gameid with a Xseconds delay 
 !   Fix executable false positive on antivirus
 
-v2.0.1 10/07/24
+v2.1 10/07/24
 
 +   Fixed Logo not showing correctly, thanks to @SavageCore
 
