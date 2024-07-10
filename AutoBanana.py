@@ -25,7 +25,9 @@ class AutoBanana:
         self.usage_logged_file = "usage_logged.txt"
 
         logging.basicConfig(filename="AutoBanana.log", level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
-        
+        with open(self.logo_file, 'r', encoding='utf-8') as file:
+            self.logo = file.read()
+            file.close()
         self.config = self.read_config()
         self.start_time = datetime.now()
         self.game_open_count = 0
@@ -322,9 +324,7 @@ class AutoBanana:
 
         try:
             self.clear_console()
-            with open(self.logo_file, 'r', encoding='utf-8') as file:
-                logo = file.read()
-            print(self.fire(logo))
+            print(self.fire(self.logo))
 
             for game_id in self.config['games']:
                 open_single_game(game_id)
@@ -469,6 +469,11 @@ class AutoBanana:
     def set_terminal_size(self, width, height):
         os.system(f"mode con: cols={width} lines={height}")
 
+    def string_width(self, multiline_string):
+        lines = multiline_string.split('\n')
+        max_length = max(len(line) for line in lines)
+        return max_length
+
     def main(self):
         self.register()
         if self.config['run_on_startup']:
@@ -485,7 +490,7 @@ class AutoBanana:
 if __name__ == "__main__":
     try:
         auto_banana = AutoBanana()
-        auto_banana.set_terminal_size(124, 30)
+        auto_banana.set_terminal_size(auto_banana.string_width(auto_banana.logo), 30)
         auto_banana.main()
     except KeyboardInterrupt:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
