@@ -466,6 +466,8 @@ class AutoBanana:
         else:
             print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Usage already logged.")
 
+    def set_terminal_size(self, width, height):
+        os.system(f"mode con: cols={width} lines={height}")
 
     def main(self):
         self.register()
@@ -483,6 +485,7 @@ class AutoBanana:
 if __name__ == "__main__":
     try:
         auto_banana = AutoBanana()
+        auto_banana.set_terminal_size(124, 30)
         auto_banana.main()
     except KeyboardInterrupt:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
