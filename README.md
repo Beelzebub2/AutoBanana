@@ -2,6 +2,11 @@
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-265-green?style=for-the-badge)
+[![GitHub issues](https://img.shields.io/github/issues/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/issues)
+[![GitHub forks](https://img.shields.io/github/forks/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/network/members)
+[![GitHub stars](https://img.shields.io/github/stars/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/stargazers)
+[![GitHub contributors](https://img.shields.io/github/contributors/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/graphs/contributors)
+
 
 # AutoBanana
 ### Now supports multiple games!
