@@ -1,16 +1,18 @@
+import configparser
+import itertools
+import logging
 import os
 import sys
-import webbrowser
 import time
-import logging
-import configparser
 import uuid
-import requests
-from datetime import datetime, timedelta
+import webbrowser
 import winreg as reg
+from datetime import datetime, timedelta
+
 import psutil
-from colorama import init, Fore, Style
+import requests
 import vdf  # type: ignore
+from colorama import Fore, Style, init
 
 init(autoreset=True)
 
@@ -36,12 +38,12 @@ class AutoBanana:
         self.update_config_file()
         self.config = self.read_config()
 
-        
+
 
     def download_file_if_not_exists(self, file_name, directory):
         '''The function `download_file_if_not_exists` downloads a file from a URL to a specified directory
         if the file does not already exist in that directory.
-        
+
         Parameters
         ----------
         file_name
@@ -52,27 +54,27 @@ class AutoBanana:
             The `directory` parameter in the `download_file_if_not_exists` function refers to the directory
         where the file will be saved or checked for existence. If the directory does not exist, the
         function will create it before proceeding with downloading or checking the file.
-        
+
         '''
         # Create the directory if it doesn't exist
         if not os.path.exists(directory):
             os.makedirs(directory)
-        
+
         file_path = os.path.join(directory, file_name)
-        
+
         # Check if the file exists
         if not os.path.exists(file_path):
             # Construct the full URL
             file_url = os.path.join(self.base_url, file_name)
-            
+
             # Download the file
             response = requests.get(file_url)
             response.raise_for_status()  # Raise an error if the request failed
-            
+
             # Save the file
             with open(file_path, 'w', encoding="utf-8") as file:
                 file.write(response.text)
-            
+
             logging.info(f"{file_name} has been downloaded to {directory}.")
         else:
            logging.info(f"{file_name} already exists in {directory}.")
@@ -80,14 +82,14 @@ class AutoBanana:
     def read_config(self):
         '''The `read_config` function reads a configuration file, downloads it from a repository if it
         doesn't exist, and returns specific settings from the configuration.
-        
+
         Returns
         -------
             The `read_config` method returns a dictionary containing the following configuration settings:
             `run_on_startup`: bool
             `games`: list
             `time_to_wait`: int
-        
+
         '''
         config = configparser.ConfigParser()
         self.download_file_if_not_exists("config.ini", ".")
@@ -97,6 +99,7 @@ class AutoBanana:
             'run_on_startup': config['Settings'].getboolean('run_on_startup', fallback=False),
             'games': [game.strip() for game in config['Settings'].get('games', '').split(',')],
             'time_to_wait': config['Settings'].getint('time_to_wait', fallback=20),
+            'batch_size': config['Settings'].getint('batch_size', fallback=5),
         }
 
 
@@ -104,7 +107,7 @@ class AutoBanana:
     def add_to_startup(self):
         '''This Python function adds the script to the Windows startup registry to run automatically on
         system boot.
-        
+
         '''
         script_path = os.path.abspath(sys.argv[0])
         key_value = r'Software\Microsoft\Windows\CurrentVersion\Run'
@@ -125,7 +128,7 @@ class AutoBanana:
 
     def remove_from_startup(self):
         '''The function removes a specific entry from the Windows startup registry key if it exists.
-        
+
         '''
         key_value = r'Software\Microsoft\Windows\CurrentVersion\Run'
         try:
@@ -140,12 +143,12 @@ class AutoBanana:
     def get_steam_install_location(self):
         '''The function `get_steam_install_location` retrieves the installation location of Steam from the
         Windows registry.
-        
+
         Returns
         -------
             The function `get_steam_install_location` returns the installation location of Steam as a
         string.
-        
+
         '''
         steam_key = reg.OpenKey(
             reg.HKEY_LOCAL_MACHINE,
@@ -161,12 +164,12 @@ class AutoBanana:
     def get_game_install_path(self, app_id):
         '''
         Searches for the installation path of a game using the provided app ID in Steam directories.
-        
+
         Parameters
         ----------
         app_id : str
             The Steam application ID of the game.
-        
+
         Returns
         -------
         str or None
@@ -184,7 +187,7 @@ class AutoBanana:
         if os.path.exists(library_folders_file):
             with open(library_folders_file, "r") as f:
                 library_folders = vdf.load(f)["libraryfolders"]
-                
+
             for key, library in library_folders.items():
                 if key == "0":
                     continue
@@ -199,14 +202,14 @@ class AutoBanana:
     def _check_app_manifest(self, steam_apps_path, app_id):
         """
         Helper method to check for the app manifest and return the installation path if found.
-        
+
         Parameters
         ----------
         steam_apps_path : str
             Path to the steamapps directory.
         app_id : str
             The Steam application ID of the game.
-        
+
         Returns
         -------
         str or None
@@ -226,12 +229,12 @@ class AutoBanana:
     def get_steam_games(self):
         '''The function `get_steam_games` retrieves a dictionary of Steam games and their installation
         paths based on the provided game IDs.
-        
+
         Returns
         -------
             A dictionary containing the names of Steam games (as keys) and their corresponding installation
         paths (as values) is being returned.
-        
+
         '''
         games = {}
 
@@ -263,7 +266,7 @@ class AutoBanana:
     def open_games(self, time_to_wait):
         '''The `open_games` function in Python opens Steam games, logs the action, and checks for running
         game processes.
-        
+
         Parameters
         ----------
         time_to_wait
@@ -272,26 +275,26 @@ class AutoBanana:
         seconds) that the program should wait after opening the games before checking for running
         processes and closing them. This parameter allows for a delay before the program proceeds to the
         next steps, giving the games some
-        
+
         '''
         all_games = self.get_steam_games()
 
         def find_running_steam_games(steam_games):
             '''The function `find_running_steam_games` takes a list of Steam game names and returns
             information about the currently running processes for those games.
-            
+
             Parameters
             ----------
             steam_games
                 A list of names of Steam games that you want to check for running processes.
-            
+
             Returns
             -------
                 The function `find_running_steam_games` returns a list of tuples, where each tuple contains
             information about a running Steam game process. The tuple includes the process object, the
             start time of the process, and the age of the process calculated as the difference between
             the current time and the start time.
-            
+
             '''
             running_games = []
             for proc in psutil.process_iter(['pid', 'name', 'create_time']):
@@ -304,14 +307,14 @@ class AutoBanana:
 
         def open_single_game(game_id):
             '''The function `open_single_game` opens a game using its ID on Steam and logs the action.
-            
+
             Parameters
             ----------
             game_id
                 The `open_single_game` function takes a `game_id` as a parameter. This `game_id` is used to
             construct a Steam run URL (`steam://rungameid/{game_id}`) to open a specific game on Steam.
             If an exception occurs during the process of opening the
-            
+
             '''
             try:
                 steam_run_url = f"steam://rungameid/{game_id}"
@@ -322,18 +325,29 @@ class AutoBanana:
             except Exception as e:
                 logging.error(f"Failed to open the game: {e}")
 
+        def batch(iterable, n=1):
+            it = iter(iterable)
+            while True:
+                chunk = list(itertools.islice(it, n))
+                if not chunk:
+                    break
+                yield chunk
+
         try:
             self.clear_console()
             print(self.fire(self.logo))
 
-            for game_id in self.config['games']:
-                open_single_game(game_id)
-                time.sleep(1)
+            games = self.config['games']
 
-            time.sleep(time_to_wait)
+            for game_batch in batch(games, self.config['batch_size']):
+                for game_id in game_batch:
+                    open_single_game(game_id)
+                    time.sleep(1)
 
-            running_games = find_running_steam_games(all_games)
-            self.close_games(running_games)
+                time.sleep(time_to_wait)
+
+                running_games = find_running_steam_games(all_games)
+                self.close_games(running_games)
         except Exception as e:
             logging.error(f"Failed to open or close the game: {e}")
 
@@ -341,7 +355,7 @@ class AutoBanana:
     def close_games(self, running_games):
         '''The `close_games` function terminates running games that have been active for less than 1.5
         minutes and logs the closure.
-        
+
         Parameters
         ----------
         running_games
@@ -349,7 +363,7 @@ class AutoBanana:
         containing information about running game processes. Each tuple appears to contain three
         elements: `proc` (presumably a process object), `start_time` (the start time of the process), and
         `process
-        
+
         '''
         threshold_minutes = 1.5
 
@@ -368,14 +382,14 @@ class AutoBanana:
     def close_program(self, process_name):
         '''The function `close_program` terminates a process with a specified name using the psutil library
         in Python.
-        
+
         Parameters
         ----------
         process_name
             The `process_name` parameter in the `close_program` method is a string that represents the name
         of the process that you want to terminate. The method uses the `psutil` library to iterate
         through all running processes and terminates the one with the specified name.
-        
+
         '''
         for proc in psutil.process_iter(['pid', 'name']):
             if proc.info['name'] == process_name:
@@ -384,7 +398,7 @@ class AutoBanana:
 
     def clear_console(self):
         '''The function `clear_console` clears the console screen based on the operating system.
-        
+
         '''
         if os.name == 'nt':
             os.system('cls')
@@ -394,21 +408,21 @@ class AutoBanana:
     def fire(self, text):
         '''The function `fire` takes a text input and applies a color fade effect to each line,
         transitioning from green to black.
-        
+
         Parameters
         ----------
         text
             The `fire` method takes a `text` input, which is a string containing one or more lines of text.
         The method then processes each line of text to create a "fire effect" by changing the color of
         the text from green to red gradually. The method returns the processed text with the
-        
+
         Returns
         -------
             The `fire` method takes a text input, splits it into lines, and then generates a colored output
         where each line has a fading green color effect. The color starts as bright green (RGB 255, 250,
         0) and gradually fades to darker green as the lines progress. The method returns the formatted
         text with the fading green effect applied.
-        
+
         '''
         fade = ""
         green = 250
@@ -420,7 +434,7 @@ class AutoBanana:
     def countdown(self, seconds):
         '''The `countdown` function in Python displays a countdown timer with additional status information
         until a specified number of seconds elapse.
-        
+
         Parameters
         ----------
         seconds
@@ -428,7 +442,7 @@ class AutoBanana:
         which the countdown will run. The function will display a countdown timer that decrements by 1
         second each time until it reaches 0. During this countdown, it will also display the current
         time, time
-        
+
         '''
         while seconds:
             uptime = datetime.now() - self.start_time
@@ -436,14 +450,19 @@ class AutoBanana:
             minutes, seconds_remaining = divmod(remainder, 60)
             time_left = f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Time until next game open: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
             status = f" | {Fore.MAGENTA}Total games: {Fore.RED}{len(self.config['games'])} {Fore.RESET}| {Fore.MAGENTA}Game opened: {Fore.RED}{self.game_open_count}{Fore.RESET} times | {Fore.MAGENTA}Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
-            print(time_left + status, end='\r')
+
+            sys.stdout.write('\r' + time_left + status)
+            sys.stdout.flush()
+
             time.sleep(1)
             seconds -= 1
+
+        print()
 
     def register(self):
         '''The `register` function checks for a user ID file, generates a new ID if not found, logs user
         usage via a web app, and handles logging success or failure.
-        
+
         '''
         try:
             with open(self.user_id_file, 'r') as file:
