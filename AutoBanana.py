@@ -249,19 +249,26 @@ class AutoBanana:
         return games
 
     def update_config_file(self):
-        '''The function updates a configuration file by removing any games that are not installed from the
-        list of games.
+        '''This function updates a configuration file by removing any games that are not installed from the
+        list of games, while preserving comments.
         '''
+        # Read the current config file into memory
+        with open("config.ini", "r") as configfile:
+            lines = configfile.readlines()
+
+        # Update the games list
         self.config = self.read_config()
         games = self.config['games']
         installed_games = [game for game in games if self.get_game_install_path(game.strip())]
+        new_games_line = f"games = {','.join(installed_games)}\n"
 
-        config_parser = configparser.ConfigParser()
-        config_parser.read("config.ini")
-        config_parser.set("Settings", "games", ",".join(installed_games))
-
+        # Write the updated config back to the file, preserving comments
         with open("config.ini", "w") as configfile:
-            config_parser.write(configfile)
+            for line in lines:
+                if line.startswith("games ="):
+                    configfile.write(new_games_line)
+                else:
+                    configfile.write(line)
 
     def open_games(self, time_to_wait):
         '''The `open_games` function in Python opens Steam games, logs the action, and checks for running
