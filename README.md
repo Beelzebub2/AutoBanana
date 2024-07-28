@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v2.1-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v2.2-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![Static Badge](https://img.shields.io/badge/Made%20by-Beelzebub2-851ebc?style=for-the-badge)
 ![User Count](https://img.shields.io/badge/Total%20Users-345-green?style=for-the-badge)
@@ -59,10 +59,17 @@ pip install -r requirements-dev.txt
 
 ```diff
 Pending Features:
-!   Autoupdater
-!   Add more themes
 !   Add option to trigger game install thourgh steam://install/gameid with a Xseconds delay 
 !   Fix executable false positive on antivirus
+!   Add UI using customtkinter to mess with config file
+
+v2.2 28/07/24
+
++   Added flake file for developers. Use "pip install flake8" then in project file "flake8 AutoBanana.py"
+!   Started working on the Autoupdater
++   Added more themes (configurable in config)
++   Changes console title
++   Overall optimizations thanks to @SavageCore
 
 v2.1 10/07/24
 

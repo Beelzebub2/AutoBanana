@@ -12,21 +12,22 @@ from datetime import datetime, timedelta
 import psutil
 import requests
 import vdf  # type: ignore
-from colorama import Fore, Style, init
+from colorama import Fore, init
 
 init(autoreset=True)
 
+
 class AutoBanana:
+
     def __init__(self):
         self.base_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/"
-
 
         self.download_file_if_not_exists("logo.txt", ".")
         self.logo_file = "logo.txt"
         self.user_id_file = "user_id.txt"
         self.usage_logged_file = "usage_logged.txt"
 
-        logging.basicConfig(filename="AutoBanana.log", level=logging.INFO,format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.basicConfig(filename="AutoBanana.log", level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         with open(self.logo_file, 'r', encoding='utf-8') as file:
             self.logo = file.read()
             file.close()
@@ -34,11 +35,12 @@ class AutoBanana:
         self.start_time = datetime.now()
         self.game_open_count = 0
         self.steam_install_location = self.get_steam_install_location()
+        self.theme_function = None
+        self.colorama_color = Fore.LIGHTWHITE_EX
         # Update config to remove games not installed
         self.update_config_file()
         self.config = self.read_config()
-
-
+        self.apply_theme()
 
     def download_file_if_not_exists(self, file_name, directory):
         '''The function `download_file_if_not_exists` downloads a file from a URL to a specified directory
@@ -77,7 +79,7 @@ class AutoBanana:
 
             logging.info(f"{file_name} has been downloaded to {directory}.")
         else:
-           logging.info(f"{file_name} already exists in {directory}.")
+            logging.info(f"{file_name} already exists in {directory}.")
 
     def read_config(self):
         '''The `read_config` function reads a configuration file, downloads it from a repository if it
@@ -100,9 +102,8 @@ class AutoBanana:
             'games': [game.strip() for game in config['Settings'].get('games', '').split(',')],
             'time_to_wait': config['Settings'].getint('time_to_wait', fallback=20),
             'batch_size': config['Settings'].getint('batch_size', fallback=5),
+            'theme': config['Settings'].get('theme', fallback='default'),
         }
-
-
 
     def add_to_startup(self):
         '''This Python function adds the script to the Windows startup registry to run automatically on
@@ -118,7 +119,7 @@ class AutoBanana:
                     reg.SetValueEx(open_key, 'OpenBanana', 0, reg.REG_SZ, script_path)
                     logging.info("Successfully added to startup")
                 else:
-                    print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Already on startup")
+                    print(f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Already on startup")
         except FileNotFoundError:
             with reg.OpenKey(reg.HKEY_CURRENT_USER, key_value, 0, reg.KEY_ALL_ACCESS) as open_key:
                 reg.SetValueEx(open_key, 'OpenBanana', 0, reg.REG_SZ, script_path)
@@ -328,7 +329,7 @@ class AutoBanana:
                 webbrowser.open(steam_run_url)
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 logging.info(f"{timestamp} - Opened {steam_run_url}")
-                print(f"{Fore.YELLOW}{timestamp} - {Fore.GREEN}Opened {steam_run_url}")
+                print(f"{self.colorama_color}{timestamp} - {Fore.GREEN}Opened {steam_run_url}")
             except Exception as e:
                 logging.error(f"Failed to open the game: {e}")
 
@@ -342,7 +343,7 @@ class AutoBanana:
 
         try:
             self.clear_console()
-            print(self.fire(self.logo))
+            print(self.theme_function(self.logo))
 
             games = self.config['games']
 
@@ -358,7 +359,6 @@ class AutoBanana:
         except Exception as e:
             logging.error(f"Failed to open or close the game: {e}")
 
-
     def close_games(self, running_games):
         '''The `close_games` function terminates running games that have been active for less than 1.5
         minutes and logs the closure.
@@ -370,7 +370,6 @@ class AutoBanana:
         containing information about running game processes. Each tuple appears to contain three
         elements: `proc` (presumably a process object), `start_time` (the start time of the process), and
         `process
-
         '''
         threshold_minutes = 1.5
 
@@ -381,10 +380,9 @@ class AutoBanana:
                     proc.wait()
                     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     logging.info(f"{timestamp} - Closed {proc.info['name']} (PID: {proc.info['pid']})")
-                    print(f"{Fore.YELLOW}{timestamp} - {Fore.RED}Closed {proc.info['name']} (PID: {proc.info['pid']})")
+                    print(f"{self.colorama_color}{timestamp} - {Fore.RED}Closed {proc.info['name']} (PID: {proc.info['pid']})")
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
-
 
     def close_program(self, process_name):
         '''The function `close_program` terminates a process with a specified name using the psutil library
@@ -396,7 +394,6 @@ class AutoBanana:
             The `process_name` parameter in the `close_program` method is a string that represents the name
         of the process that you want to terminate. The method uses the `psutil` library to iterate
         through all running processes and terminates the one with the specified name.
-
         '''
         for proc in psutil.process_iter(['pid', 'name']):
             if proc.info['name'] == process_name:
@@ -438,6 +435,57 @@ class AutoBanana:
             green = max(0, green - 25)
         return fade
 
+    def ice(self, text):
+        '''The `ice` function takes a text input and applies a fading blue color effect to each line of the
+        text.
+
+        Parameters
+        ----------
+        text
+            The `ice` function takes a text input and applies a fading effect to it by changing the blue
+        color component gradually from 255 to 0 as it goes through each line of the input text. The
+        function then returns the text with the fading effect applied.
+
+        Returns
+        -------
+            The `ice` function takes a text input and applies a fading effect to it by changing the blue
+        color component gradually from 255 to 0. The function returns the input text with the fading
+        effect applied using ANSI escape codes for colored text.
+
+        '''
+        fade = ""
+        blue = 255
+        for line in text.splitlines():
+            fade += f"\033[38;2;0;{blue};255m{line}\033[0m\n"
+            blue = max(0, blue - 25)
+        return fade
+
+    def pinkneon(self, text):
+        '''The function `pinkneon` takes a text input and creates a pink neon effect by fading the text
+        color from white to blue.
+
+        Parameters
+        ----------
+        text
+            The `pinkneon` function takes a text input and creates a pink neon effect by fading the text
+        color from pink to blue. The function iterates over each line of the input text, calculating the
+        blue color value based on the line index, and then formats the text with ANSI escape codes to
+
+        Returns
+        -------
+            The `pinkneon` function returns a string with the input text formatted with a pink neon color
+        effect. Each line of the input text is displayed with a fading effect from pink to blue.
+
+        '''
+        fade = ""
+        for index, line in enumerate(text.splitlines()):
+            blue = max(255 - 20 * index, 0)
+            fade += f"\033[38;2;255;0;{blue}m{line}\033[0m\n"
+        return fade
+
+    def default_theme(self, text):
+        return text
+
     def countdown(self, seconds):
         '''The `countdown` function in Python displays a countdown timer with additional status information
         until a specified number of seconds elapse.
@@ -449,13 +497,12 @@ class AutoBanana:
         which the countdown will run. The function will display a countdown timer that decrements by 1
         second each time until it reaches 0. During this countdown, it will also display the current
         time, time
-
         '''
         while seconds:
             uptime = datetime.now() - self.start_time
             hours, remainder = divmod(seconds, 3600)
             minutes, seconds_remaining = divmod(remainder, 60)
-            time_left = f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Time until next game open: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
+            time_left = f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Time until next game open: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
             status = f" | {Fore.MAGENTA}Total games: {Fore.RED}{len(self.config['games'])} {Fore.RESET}| {Fore.MAGENTA}Game opened: {Fore.RED}{self.game_open_count}{Fore.RESET} times | {Fore.MAGENTA}Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
 
             sys.stdout.write('\r' + time_left + status)
@@ -486,11 +533,11 @@ class AutoBanana:
             if response.status_code == 200:
                 with open(self.usage_logged_file, 'w') as file:
                     file.write('logged')
-                print(f"{Fore.YELLOW}{timestamp} - {Fore.GREEN}Usage logged successfully.")
+                print(f"{self.colorama_color}{timestamp} - {Fore.GREEN}Usage logged successfully.")
             else:
                 logging.error(f"{timestamp} - Failed to log usage.")
         else:
-            print(f"{Fore.YELLOW}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Usage already logged.")
+            print(f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Usage already logged.")
 
     def set_terminal_size(self, width, height):
         os.system(f"mode con: cols={width} lines={height}")
@@ -499,6 +546,38 @@ class AutoBanana:
         lines = multiline_string.split('\n')
         max_length = max(len(line) for line in lines)
         return max_length
+
+    def apply_theme(self):
+        '''The function `apply_theme` sets the theme and color scheme based on the configuration provided.
+
+        '''
+        theme = self.config['theme'].lower()
+        match theme:
+            case 'fire':
+                self.theme_function = self.fire
+                self.colorama_color = Fore.YELLOW
+            case 'ice':
+                self.theme_function = self.ice
+                self.colorama_color = Fore.LIGHTBLUE_EX
+            case 'pinkneon':
+                self.theme_function = self.pinkneon
+                self.colorama_color = Fore.LIGHTMAGENTA_EX
+            case 'default':
+                self.theme_function = self.default_theme
+                self.colorama_color = Fore.LIGHTWHITE_EX
+
+    def is_running_as_exe(self):
+        '''The function `is_running_as_exe` checks if the Python script is running as an executable or as a .py.
+
+        Returns
+        -------
+            The function `is_running_as_exe` is checking if the Python script is running as a standalone
+        executable (`.exe` file) using PyInstaller or similar tools. It returns `True` if the script is
+        frozen (compiled into an executable) and has the `_MEIPASS` attribute in the `sys` module,
+        otherwise it returns `False`.
+
+        '''
+        return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
     def main(self):
         self.register()
@@ -515,9 +594,10 @@ class AutoBanana:
 
 if __name__ == "__main__":
     try:
+        os.system("title AutoBanana v2.2")
         auto_banana = AutoBanana()
         auto_banana.set_terminal_size(auto_banana.string_width(auto_banana.logo), 30)
         auto_banana.main()
     except KeyboardInterrupt:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"\n\n{Fore.YELLOW}{timestamp} - {Fore.LIGHTGREEN_EX}Program exited gracefully.")
+        print(f"\n\n{auto_banana.colorama_color}{timestamp} - {Fore.LIGHTGREEN_EX}Program exited gracefully.")
