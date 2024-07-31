@@ -6,6 +6,8 @@
 [![GitHub forks](https://img.shields.io/github/forks/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/network/members)
 [![GitHub stars](https://img.shields.io/github/stars/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/stargazers)
 [![GitHub contributors](https://img.shields.io/github/contributors/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/graphs/contributors)
+![GitHub Actions Build Status](https://img.shields.io/github/actions/workflow/status/Beelzebub2/AutoBanana/build.yml?style=for-the-badge&label=Build)
+
 
 
 # AutoBanana
@@ -24,8 +26,8 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 
 You can find the latest releases [here](https://github.com/Beelzebub2/AutoBanana/releases).
 
-Simply download and run `AutoBanana-win64.exe` 
-#### I am aware of the false positive on the windows defender and working on a solution  
+Simply download and run `AutoBanana-win64.exe`
+#### I am aware of the false positive on the windows defender and working on a solution
 
 ### Manual Installation
 
@@ -59,7 +61,7 @@ pip install -r requirements-dev.txt
 
 ```diff
 Pending Features:
-!   Add option to trigger game install thourgh steam://install/gameid with a Xseconds delay 
+!   Add option to trigger game install thourgh steam://install/gameid with a Xseconds delay
 !   Fix executable false positive on antivirus
 !   Add UI using customtkinter to mess with config file
 
