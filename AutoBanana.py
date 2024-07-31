@@ -590,6 +590,8 @@ class AutoBanana:
             self.open_games(self.config['time_to_wait'])
             self.game_open_count += 1
             self.countdown(3 * 60 * 60)
+            # Update the games list before the next iteration
+            self.config = self.read_config()
 
 
 if __name__ == "__main__":
