@@ -1,6 +1,6 @@
 ![Static Badge](https://img.shields.io/badge/Version-v2.2-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
-![User Count](https://img.shields.io/badge/Total%20Users-361-green?style=for-the-badge)
+![User Count](https://img.shields.io/badge/Total%20Users-362-green?style=for-the-badge)
 [![GitHub issues](https://img.shields.io/github/issues/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/issues)
 [![GitHub forks](https://img.shields.io/github/forks/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/network/members)
 [![GitHub stars](https://img.shields.io/github/stars/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/stargazers)
