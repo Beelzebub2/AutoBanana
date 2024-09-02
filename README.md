@@ -53,10 +53,6 @@ pip install -r requirements-dev.txt
 - **Navigate to the project directory:** `cd AutoBanana`
 - **Build with pyinstaller:** `pyinstaller -F -n AutoBanana-win64 -i banana.ico AutoBanana.py`
 
-### Releasing
-
-- Push a tag with the version number starting with `v` and GitHub Actions will automatically build the release and upload it to the releases page.
-
 ### Release Notes
 
 ```diff
