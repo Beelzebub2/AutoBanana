@@ -10,7 +10,7 @@
 
 
 # AutoBanana
-### Now supports multiple games!
+### Now supports multiple games and multiple accounts!
 
 AutoBanana is an automated script designed to manage the opening and closing of games through Steam. The primary features of AutoBanana include:
 
