@@ -1,5 +1,5 @@
 pyinstaller>=5.13.2
 types-colorama==0.4.15.20240311
-types-psutil==6.0.0.20240621
+types-psutil==6.0.0.20240901
 types-requests==2.32.0.20240712
 flake8===7.1.1
