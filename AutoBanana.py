@@ -2,6 +2,7 @@ import configparser
 import itertools
 import logging
 import os
+import subprocess
 import sys
 import time
 import uuid
@@ -13,6 +14,9 @@ import psutil
 import requests
 import vdf  # type: ignore
 from colorama import Fore, init
+import utils
+import utils.steam_manager
+import utils.theme_manager
 
 init(autoreset=True)
 
@@ -23,13 +27,19 @@ class AutoBanana:
         self.base_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/"
 
         self.download_file_if_not_exists("logo.txt", ".")
+        self.download_file_if_not_exists("startup.txt", ".")
         self.logo_file = "logo.txt"
+        self.startup_logo_file = "startup.txt"
         self.user_id_file = "user_id.txt"
         self.usage_logged_file = "usage_logged.txt"
 
         logging.basicConfig(filename="AutoBanana.log", level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        logging.getLogger("main")
         with open(self.logo_file, 'r', encoding='utf-8') as file:
             self.logo = file.read()
+            file.close()
+        with open(self.startup_logo_file, 'r', encoding='utf-8') as file:
+            self.startup_logo = file.read()
             file.close()
         self.config = self.read_config()
         self.start_time = datetime.now()
@@ -40,6 +50,8 @@ class AutoBanana:
         # Update config to remove games not installed
         self.update_config_file()
         self.config = self.read_config()
+        self.themes = utils.theme_manager
+        self.steam_account_changer = utils.steam_manager.SteamAccountChanger()
         self.apply_theme()
 
     def download_file_if_not_exists(self, file_name, directory):
@@ -103,6 +115,7 @@ class AutoBanana:
             'time_to_wait': config['Settings'].getint('time_to_wait', fallback=20),
             'batch_size': config['Settings'].getint('batch_size', fallback=5),
             'theme': config['Settings'].get('theme', fallback='default'),
+            'switch_steam_accounts': config['Settings'].getboolean('switch_steam_accounts', fallback=False)
         }
 
     def add_to_startup(self):
@@ -409,108 +422,49 @@ class AutoBanana:
         else:
             os.system('clear')
 
-    def fire(self, text):
-        '''The function `fire` takes a text input and applies a color fade effect to each line,
-        transitioning from green to black.
-
-        Parameters
-        ----------
-        text
-            The `fire` method takes a `text` input, which is a string containing one or more lines of text.
-        The method then processes each line of text to create a "fire effect" by changing the color of
-        the text from green to red gradually. The method returns the processed text with the
-
-        Returns
-        -------
-            The `fire` method takes a text input, splits it into lines, and then generates a colored output
-        where each line has a fading green color effect. The color starts as bright green (RGB 255, 250,
-        0) and gradually fades to darker green as the lines progress. The method returns the formatted
-        text with the fading green effect applied.
-
-        '''
-        fade = ""
-        green = 250
-        for line in text.splitlines():
-            fade += f"\033[38;2;255;{green};0m{line}\033[0m\n"
-            green = max(0, green - 25)
-        return fade
-
-    def ice(self, text):
-        '''The `ice` function takes a text input and applies a fading blue color effect to each line of the
-        text.
-
-        Parameters
-        ----------
-        text
-            The `ice` function takes a text input and applies a fading effect to it by changing the blue
-        color component gradually from 255 to 0 as it goes through each line of the input text. The
-        function then returns the text with the fading effect applied.
-
-        Returns
-        -------
-            The `ice` function takes a text input and applies a fading effect to it by changing the blue
-        color component gradually from 255 to 0. The function returns the input text with the fading
-        effect applied using ANSI escape codes for colored text.
-
-        '''
-        fade = ""
-        blue = 255
-        for line in text.splitlines():
-            fade += f"\033[38;2;0;{blue};255m{line}\033[0m\n"
-            blue = max(0, blue - 25)
-        return fade
-
-    def pinkneon(self, text):
-        '''The function `pinkneon` takes a text input and creates a pink neon effect by fading the text
-        color from white to blue.
-
-        Parameters
-        ----------
-        text
-            The `pinkneon` function takes a text input and creates a pink neon effect by fading the text
-        color from pink to blue. The function iterates over each line of the input text, calculating the
-        blue color value based on the line index, and then formats the text with ANSI escape codes to
-
-        Returns
-        -------
-            The `pinkneon` function returns a string with the input text formatted with a pink neon color
-        effect. Each line of the input text is displayed with a fading effect from pink to blue.
-
-        '''
-        fade = ""
-        for index, line in enumerate(text.splitlines()):
-            blue = max(255 - 20 * index, 0)
-            fade += f"\033[38;2;255;0;{blue}m{line}\033[0m\n"
-        return fade
-
-    def default_theme(self, text):
-        return text
-
     def countdown(self, seconds):
-        '''The `countdown` function in Python displays a countdown timer with additional status information
-        until a specified number of seconds elapse.
+        """
+        Displays a countdown timer with additional status information until the specified number of seconds elapse.
 
         Parameters
         ----------
-        seconds
-            The `seconds` parameter in the `countdown` function represents the total number of seconds for
-        which the countdown will run. The function will display a countdown timer that decrements by 1
-        second each time until it reaches 0. During this countdown, it will also display the current
-        time, time
-        '''
+        seconds : int
+            The total number of seconds for which the countdown will run.
+            The countdown timer decrements by 1 second each time until it reaches 0,
+            displaying the current time and additional status information.
+        """
         while seconds:
+            # Calculate the uptime
             uptime = datetime.now() - self.start_time
+
+            # Calculate hours, minutes, and seconds remaining
             hours, remainder = divmod(seconds, 3600)
             minutes, seconds_remaining = divmod(remainder, 60)
-            time_left = f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Time until next game open: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
-            status = f" | {Fore.MAGENTA}Total games: {Fore.RED}{len(self.config['games'])} {Fore.RESET}| {Fore.MAGENTA}Game opened: {Fore.RED}{self.game_open_count}{Fore.RESET} times | {Fore.MAGENTA}Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
 
+            # Construct the time left message
+            time_left = (
+                f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - "
+                f"Time until next run: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
+            )
+
+            # Construct the status message
+            status = (
+                f" | {Fore.MAGENTA}Total games: {Fore.RED}{len(self.config['games'])} {Fore.RESET}"
+                f"| {Fore.MAGENTA}Total accounts: {Fore.RED}{len(self.steam_account_changer.get_steam_login_user_names())} {Fore.RESET}"
+                f"| {Fore.MAGENTA}Game opened: {Fore.RED}{self.game_open_count} {Fore.RESET}"
+                f"{'times' if self.game_open_count > 1 else 'time'} "
+                f"| {Fore.MAGENTA}Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
+            )
+
+            # Output the countdown and status information
             sys.stdout.write('\r' + time_left + status)
             sys.stdout.flush()
 
+            # Wait for a second and decrement the countdown
             time.sleep(1)
             seconds -= 1
 
+        # Print a new line after the countdown completes
         print()
 
     def register(self):
@@ -554,16 +508,16 @@ class AutoBanana:
         theme = self.config['theme'].lower()
         match theme:
             case 'fire':
-                self.theme_function = self.fire
+                self.theme_function = self.themes.fire
                 self.colorama_color = Fore.YELLOW
             case 'ice':
-                self.theme_function = self.ice
+                self.theme_function = self.themes.ice
                 self.colorama_color = Fore.LIGHTBLUE_EX
             case 'pinkneon':
-                self.theme_function = self.pinkneon
+                self.theme_function = self.themes.pinkneon
                 self.colorama_color = Fore.LIGHTMAGENTA_EX
             case 'default':
-                self.theme_function = self.default_theme
+                self.theme_function = self.themes.default_theme
                 self.colorama_color = Fore.LIGHTWHITE_EX
 
     def is_running_as_exe(self):
@@ -580,16 +534,29 @@ class AutoBanana:
         return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
     def main(self):
+        self.clear_console()
+        print(self.theme_function(self.startup_logo))
         self.register()
         if self.config['run_on_startup']:
             self.add_to_startup()
         else:
             self.remove_from_startup()
-
+        self.account_names = self.steam_account_changer.get_steam_login_user_names()
         while True:
-            self.open_games(self.config['time_to_wait'])
-            self.game_open_count += 1
-            self.countdown(3 * 60 * 60)
+            if self.config['switch_steam_accounts']:
+                for account in self.account_names:
+                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    print(f"{self.colorama_color}{timestamp} - {Fore.LIGHTWHITE_EX}Switching to account: {account}")
+                    self.steam_account_changer.switch_account(account)
+                    time.sleep(10)
+                    self.open_games(self.config['time_to_wait'])
+                self.game_open_count += 1
+                self.countdown(3 * 60 * 60)
+                self.config = self.read_config()
+            else:
+                self.open_games(self.config['time_to_wait'])
+                self.game_open_count += 1
+                self.countdown(3 * 60 * 60)
             # Update the games list before the next iteration
             self.config = self.read_config()
 
@@ -598,7 +565,7 @@ if __name__ == "__main__":
     try:
         os.system("title AutoBanana v2.2")
         auto_banana = AutoBanana()
-        auto_banana.set_terminal_size(auto_banana.string_width(auto_banana.logo), 30)
+        auto_banana.set_terminal_size(auto_banana.string_width(auto_banana.logo) + 20, 30)
         auto_banana.main()
     except KeyboardInterrupt:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')

@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v2.2-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v2.3-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![User Count](https://img.shields.io/badge/Total%20Users-448-green?style=for-the-badge)
 [![GitHub issues](https://img.shields.io/github/issues/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/issues)
@@ -63,6 +63,14 @@ Pending Features:
 !   Add option to trigger game install thourgh steam://install/gameid with a Xseconds delay
 !   Fix executable false positive on antivirus
 !   Add UI using customtkinter to mess with config file
+
+v2.3 02/09/24
+
++   Organized the countdown code
++   Added a startup logo
++   Added Docker file for easy setup
++   Added switch steam account funcionality
++   Organized code moving themes to theme_manager.py and steam account changer to steam_manager.py
 
 v2.2 28/07/24
 
