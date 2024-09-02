@@ -24,11 +24,10 @@ class AutoBanana:
 
     def __init__(self):
         self.base_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/"
-
-        self.download_file_if_not_exists("logo.txt", ".")
-        self.download_file_if_not_exists("startup.txt", ".")
         self.logo_file = "logo.txt"
         self.startup_logo_file = "startup.txt"
+        self.download_file_if_not_exists(self.logo_file, ".")
+        self.download_file_if_not_exists(self.startup_logo_file, ".")
         self.user_id_file = "user_id.txt"
         self.usage_logged_file = "usage_logged.txt"
 
