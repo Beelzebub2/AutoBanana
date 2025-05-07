@@ -448,7 +448,7 @@ class AutoBanana:
             # Construct the status message
             status = (
                 f" | {Fore.MAGENTA}Total games: {Fore.RED}{len(self.config['games'])} {Fore.RESET}"
-                f"| {Fore.MAGENTA}Total accounts: {Fore.RED}{len(self.steam_account_changer.get_steam_login_user_names()) if self.config['switch_steam_accounts'] else "1"} {Fore.RESET}"
+                f"| {Fore.MAGENTA}Total accounts: {Fore.RED}{len(self.steam_account_changer.get_steam_login_user_names()) if self.config['switch_steam_accounts'] else '1'} {Fore.RESET}"
                 f"| {Fore.MAGENTA}Game opened: {Fore.RED}{self.game_open_count} {Fore.RESET}"
                 f"{'times' if self.game_open_count > 1 else 'time'} "
                 f"| {Fore.MAGENTA}Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
