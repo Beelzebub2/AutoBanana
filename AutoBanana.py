@@ -1,8 +1,11 @@
 import configparser
 import itertools
 import logging
+import math
 import os
+import shutil
 import sys
+import threading
 import time
 import uuid
 import webbrowser
@@ -18,6 +21,10 @@ import utils.steam_manager
 import utils.theme_manager
 
 init(autoreset=True)
+
+# Enable ANSI escape codes on Windows
+if os.name == 'nt':
+    os.system('')  # Enable VT100 escape sequences
 
 
 class AutoBanana:
@@ -39,7 +46,11 @@ class AutoBanana:
         with open(self.startup_logo_file, 'r', encoding='utf-8') as file:
             self.startup_logo = file.read()
             file.close()
-        self.console_width = max(self.string_width(self.logo), self.string_width(self.startup_logo)) + 20
+        
+        # Dynamic console sizing
+        self.min_width = max(self.string_width(self.logo), self.string_width(self.startup_logo)) + 10
+        self.console_width, self.console_height = self.get_terminal_size()
+        
         self.config = self.read_config()
         self.start_time = datetime.now()
         self.game_open_count = 0
@@ -47,12 +58,22 @@ class AutoBanana:
         self.steam_install_location = self.get_steam_install_location()
         self.theme_function = None
         self.colorama_color = Fore.LIGHTWHITE_EX
+        
+        # Animation state
+        self.animation_running = False
+        self.animation_thread = None
+        self.spinner_chars = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+        self.progress_chars = ["░", "▒", "▓", "█"]
+        
         # Update config to remove games not installed
         self.update_config_file()
         self.config = self.read_config()
         self.themes = utils.theme_manager
         self.steam_account_changer = utils.steam_manager.SteamAccountChanger()
         self.apply_theme()
+        
+        # Start animation frame updater
+        self.start_animation_thread()
 
     def log_event(self, message, level="info"):
         color_map = {
@@ -71,11 +92,244 @@ class AutoBanana:
         color = color_map.get(level, self.colorama_color)
         prefix = prefix_map.get(level, "[INFO]")
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        # Animate the prefix with a brief color pulse
         print(f"{self.colorama_color}{timestamp} {color}{prefix}{Fore.RESET} {message}")
 
-    def render_banner(self, text):
+    def get_terminal_size(self):
+        """Get current terminal size dynamically."""
+        try:
+            size = shutil.get_terminal_size()
+            return max(size.columns, self.min_width), max(size.lines, 20)
+        except:
+            return 120, 32
+
+    def start_animation_thread(self):
+        """Start background thread for animation frame updates."""
+        self.animation_running = True
+        self.animation_thread = threading.Thread(target=self._animation_loop, daemon=True)
+        self.animation_thread.start()
+
+    def _animation_loop(self):
+        """Background loop to update animation frames."""
+        while self.animation_running:
+            self.themes.advance_animation_frame()
+            time.sleep(0.05)  # 20 FPS for smooth animations
+
+    def stop_animation_thread(self):
+        """Stop the animation thread."""
+        self.animation_running = False
+        if self.animation_thread:
+            self.animation_thread.join(timeout=1)
+
+    def get_spinner(self, frame=None):
+        """Get current spinner character."""
+        if frame is None:
+            frame = self.themes.get_animation_frame()
+        return self.spinner_chars[frame % len(self.spinner_chars)]
+
+    def get_theme_colors(self, animated=True):
+        """
+        Get RGB colors based on current theme.
+        Returns tuple of (r, g, b) values.
+        """
+        theme = self.config['theme'].lower()
+        frame = self.themes.get_animation_frame() if animated else 0
+        pulse = int(40 * math.sin(frame * 0.15))
+        
+        if theme == 'fire':
+            return (255, 180 + pulse, 0)
+        elif theme == 'ice':
+            return (100 + pulse, 180 + pulse, 255)
+        elif theme == 'pinkneon':
+            return (255, 50 + pulse, 200 + pulse)
+        elif theme == 'rainbow':
+            return self.themes.hsv_to_rgb((frame * 2 % 360) / 360, 1.0, 1.0)
+        elif theme == 'matrix':
+            return (0, 200 + pulse, 0)
+        elif theme == 'sunset':
+            return (255, 150 + pulse, 50 + abs(pulse))
+        else:  # default
+            return (200 + pulse, 200 + pulse, 200 + pulse)
+
+    def get_theme_color_code(self, animated=True):
+        """
+        Get ANSI color escape code based on current theme.
+        """
+        r, g, b = self.get_theme_colors(animated)
+        return f"\033[38;2;{r};{g};{b}m"
+
+    def create_progress_bar(self, progress, width=None):
+        """Create an animated progress bar that adapts to terminal width."""
+        if width is None:
+            term_width, _ = self.get_terminal_size()
+            width = min(40, term_width - 50)  # Leave room for other info
+        
+        filled = int(width * progress)
+        empty = width - filled
+        
+        # Get theme-appropriate colors
+        frame = self.themes.get_animation_frame()
+        theme = self.config['theme'].lower()
+        
+        if theme == 'fire':
+            start_color = (255, 200, 0)
+            end_color = (255, 50, 0)
+        elif theme == 'ice':
+            start_color = (100, 200, 255)
+            end_color = (0, 100, 255)
+        elif theme == 'pinkneon':
+            start_color = (255, 100, 200)
+            end_color = (200, 0, 255)
+        elif theme == 'rainbow':
+            # Rainbow gradient based on animation frame
+            h1 = (frame * 2) % 360
+            h2 = (frame * 2 + 60) % 360
+            start_color = self.themes.hsv_to_rgb(h1 / 360, 1.0, 1.0)
+            end_color = self.themes.hsv_to_rgb(h2 / 360, 1.0, 1.0)
+        elif theme == 'matrix':
+            start_color = (0, 255, 0)
+            end_color = (0, 150, 0)
+        elif theme == 'sunset':
+            start_color = (255, 180, 50)
+            end_color = (255, 50, 150)
+        else:
+            start_color = (100, 255, 100)
+            end_color = (0, 150, 255)
+        
+        bar = ""
+        for i in range(filled):
+            ratio = i / max(1, width)
+            # Add subtle animation pulse
+            pulse = int(30 * math.sin(frame * 0.1 + i * 0.3))
+            r = max(0, min(255, int(start_color[0] + (end_color[0] - start_color[0]) * ratio) + pulse))
+            g = max(0, min(255, int(start_color[1] + (end_color[1] - start_color[1]) * ratio) + pulse))
+            b = max(0, min(255, int(start_color[2] + (end_color[2] - start_color[2]) * ratio) + pulse))
+            bar += f"\033[38;2;{r};{g};{b}m█\033[0m"
+        
+        bar += f"\033[38;2;60;60;60m{'░' * empty}\033[0m"
+        return bar
+
+    def animated_text(self, text, color=None):
+        """Apply subtle animation to text based on current frame."""
+        if color is None:
+            color = self.colorama_color
+        frame = self.themes.get_animation_frame()
+        
+        # Subtle brightness pulse
+        pulse = int(20 * math.sin(frame * 0.1))
+        return f"{color}{text}{Fore.RESET}"
+
+    def render_banner(self, text, animate=True):
         self.clear_console()
-        print(self.theme_function(text))
+        self.console_width, self.console_height = self.get_terminal_size()
+        if animate:
+            print(self.theme_function(text, animate=True))
+        else:
+            print(self.theme_function(text, animate=False))
+
+    def render_animated_banner(self, text, duration=3.0):
+        """
+        Render banner with continuous animation for a specified duration.
+        Shows the theme animation effect in real-time.
+        
+        Parameters
+        ----------
+        text : str
+            The banner text to display
+        duration : float
+            How long to animate in seconds
+        """
+        start_time = time.time()
+        lines_count = len(text.splitlines()) + 2
+        
+        while time.time() - start_time < duration:
+            # Move cursor to top
+            sys.stdout.write(f'\033[{lines_count}A')
+            sys.stdout.write('\033[J')  # Clear from cursor to end
+            
+            # Print animated banner
+            print(self.theme_function(text, animate=True))
+            
+            time.sleep(0.1)  # ~10 FPS for smooth animation
+        
+        # Final render
+        sys.stdout.write(f'\033[{lines_count}A')
+        sys.stdout.write('\033[J')
+        print(self.theme_function(text, animate=True))
+
+    def animated_wait(self, seconds, message="Waiting", show_progress=True):
+        """
+        Animated waiting with progress bar and spinner.
+        
+        Parameters
+        ----------
+        seconds : int
+            Number of seconds to wait
+        message : str
+            Message to display during wait
+        show_progress : bool
+            Whether to show progress bar
+        """
+        total = seconds
+        start_time = time.time()
+        
+        while seconds > 0:
+            elapsed = time.time() - start_time
+            progress = elapsed / total if total > 0 else 0
+            remaining = max(0, seconds)
+            
+            # Get terminal width for adaptive display
+            term_width, _ = self.get_terminal_size()
+            
+            # Animated spinner
+            spinner = self.get_spinner()
+            
+            # Time display with theme color
+            mins, secs = divmod(int(remaining), 60)
+            time_color = self.get_theme_color_code(animated=True)
+            time_str = f"{time_color}{mins:02d}:{secs:02d}\033[0m"
+            
+            # Create progress bar
+            if show_progress:
+                bar_width = min(30, max(15, term_width - len(message) - 25))
+                progress_bar = self.create_progress_bar(progress, bar_width)
+                
+                # Compose the line with theme color for text
+                color_code = self.get_theme_color_code(animated=True)
+                line = f" {color_code}{spinner}\033[0m {color_code}{message}\033[0m {progress_bar} {time_str} "
+            else:
+                # Animated dots
+                dots = "." * (int(elapsed * 2) % 4)
+                color_code = self.get_theme_color_code(animated=True)
+                line = f" {color_code}{spinner} {message}{dots.ljust(3)}\033[0m {time_str} "
+            
+            # Write to console
+            sys.stdout.write('\r' + line.ljust(term_width - 1))
+            sys.stdout.flush()
+            
+            # Small sleep for smooth animation (10 updates per second)
+            time.sleep(0.1)
+            seconds = total - (time.time() - start_time)
+        
+        # Clear the line when done
+        term_width, _ = self.get_terminal_size()
+        sys.stdout.write('\r' + ' ' * (term_width - 1) + '\r')
+        sys.stdout.flush()
+
+    def animated_account_switch(self, account_name, duration=10):
+        """
+        Show animated display while switching Steam accounts.
+        
+        Parameters
+        ----------
+        account_name : str
+            Name of the account being switched to
+        duration : int
+            How long to show the animation
+        """
+        message = f"Switching to {account_name}"
+        self.animated_wait(duration, message, show_progress=True)
+        self.log_event(f"Switched to account: {account_name}", "success")
 
     def print_config_overview(self):
         lines = [
@@ -98,19 +352,46 @@ class AutoBanana:
         for acc in accounts:
             print(f"{self.colorama_color}  - {acc}")
 
-    def compose_status_line(self, seconds, uptime, account_count):
+    def compose_status_line(self, seconds, uptime, account_count, total_seconds=None):
+        """Compose an animated status line with progress bar."""
         hours, remainder = divmod(seconds, 3600)
         minutes, seconds_remaining = divmod(remainder, 60)
-
-        time_left = f"Time until next run: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
-        stats = (
-            f"Games: {Fore.RED}{len(self.config['games'])}{Fore.RESET} | "
-            f"Accounts: {Fore.RED}{account_count}{Fore.RESET} | "
-            f"Runs: {Fore.RED}{self.game_open_count}{Fore.RESET} | "
-            f"Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
-        )
-
-        return f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {time_left} | {stats}"
+        
+        # Get current terminal width
+        term_width, _ = self.get_terminal_size()
+        
+        # Animated spinner
+        spinner = self.get_spinner()
+        
+        # Calculate progress for the bar
+        if total_seconds:
+            progress = 1 - (seconds / total_seconds)
+        else:
+            progress = 0
+        
+        # Create progress bar with adaptive width
+        bar_width = min(25, max(10, term_width - 90))
+        progress_bar = self.create_progress_bar(progress, bar_width)
+        
+        # Time display with theme-based pulsing effect
+        time_color = self.get_theme_color_code(animated=True)
+        
+        time_left = f"{time_color}{hours:02}:{minutes:02}:{seconds_remaining:02}\033[0m"
+        
+        # Compact or full view based on terminal width
+        if term_width < 100:
+            # Compact view
+            status = f" {spinner} {progress_bar} {time_left}"
+        else:
+            # Full view
+            stats = (
+                f"Games:{Fore.RED}{len(self.config['games'])}{Fore.RESET} "
+                f"Acc:{Fore.RED}{account_count}{Fore.RESET} "
+                f"Runs:{Fore.RED}{self.game_open_count}{Fore.RESET}"
+            )
+            status = f" {spinner} {progress_bar} {time_left} | {stats} | Uptime:{Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
+        
+        return status
 
     def download_file_if_not_exists(self, file_name, directory):
         '''The function `download_file_if_not_exists` downloads a file from a URL to a specified directory
@@ -445,7 +726,8 @@ class AutoBanana:
 
                 if game_batch:
                     self.log_event(f"Waiting {time_to_wait}s before closing newly started games.")
-                time.sleep(time_to_wait)
+                    # Use animated wait instead of plain sleep
+                    self.animated_wait(time_to_wait, "Games running", show_progress=True)
 
                 running_games = find_running_steam_games(all_games)
                 self.close_games(running_games)
@@ -504,24 +786,70 @@ class AutoBanana:
 
     def countdown(self, seconds):
         """
-        Displays a countdown timer with additional status information until the specified number of seconds elapse.
+        Displays an animated countdown timer with progress bar and status information.
+        Adapts to terminal size changes in real-time.
 
         Parameters
         ----------
         seconds : int
             The total number of seconds for which the countdown will run.
-            The countdown timer decrements by 1 second each time until it reaches 0,
-            displaying the current time and additional status information.
         """
-        while seconds:
+        total_seconds = seconds
+        last_width = 0
+        start_time = time.time()
+        
+        while True:
+            # Calculate remaining time
+            elapsed = time.time() - start_time
+            remaining = total_seconds - elapsed
+            
+            if remaining <= 0:
+                break
+            
+            # Check for terminal resize
+            current_width, _ = self.get_terminal_size()
+            if current_width != last_width:
+                last_width = current_width
+                # Clear line on resize
+                sys.stdout.write('\r' + ' ' * (current_width - 1) + '\r')
+            
             uptime = datetime.now() - self.start_time
             account_count = len(self.account_names) if self.config['switch_steam_accounts'] else 1
-            status_line = self.compose_status_line(seconds, uptime, account_count)
-            sys.stdout.write('\r' + status_line.ljust(self.console_width))
+            status_line = self.compose_status_line(int(remaining), uptime, account_count, total_seconds)
+            
+            # Ensure line fits terminal width
+            max_len = current_width - 2
+            sys.stdout.write('\r' + status_line[:max_len].ljust(max_len))
             sys.stdout.flush()
-            time.sleep(1)
-            seconds -= 1
+            
+            # Sleep for smooth animation (~10 FPS)
+            time.sleep(0.1)
+        
+        # Animation completion effect
+        self.show_completion_animation()
         print()
+
+    def show_completion_animation(self):
+        """Show a brief completion animation with theme colors."""
+        term_width, _ = self.get_terminal_size()
+        completion_text = " ✓ Ready for next run! "
+        
+        # Get base theme colors for flash effect
+        base_r, base_g, base_b = self.get_theme_colors(animated=False)
+        
+        # Flash effect with theme colors
+        for i in range(3):
+            brightness = 1.0 if i % 2 == 0 else 0.6
+            r = int(base_r * brightness)
+            g = int(base_g * brightness)
+            b = int(base_b * brightness)
+            colored_text = f"\033[38;2;{r};{g};{b}m{completion_text}\033[0m"
+            sys.stdout.write('\r' + colored_text.center(term_width - 10))
+            sys.stdout.flush()
+            time.sleep(0.15)
+        
+        sys.stdout.write('\r' + ' ' * (term_width - 1) + '\r')
+        sys.stdout.flush()
 
     def register(self):
         '''The `register` function checks for a user ID file, generates a new ID if not found, logs user
@@ -559,7 +887,7 @@ class AutoBanana:
 
     def apply_theme(self):
         '''The function `apply_theme` sets the theme and color scheme based on the configuration provided.
-
+        Supports animated themes: fire, ice, pinkneon, rainbow, matrix, sunset.
         '''
         theme = self.config['theme'].lower()
         match theme:
@@ -572,7 +900,16 @@ class AutoBanana:
             case 'pinkneon':
                 self.theme_function = self.themes.pinkneon
                 self.colorama_color = Fore.LIGHTMAGENTA_EX
-            case 'default':
+            case 'rainbow':
+                self.theme_function = self.themes.rainbow
+                self.colorama_color = Fore.LIGHTCYAN_EX
+            case 'matrix':
+                self.theme_function = self.themes.matrix
+                self.colorama_color = Fore.LIGHTGREEN_EX
+            case 'sunset':
+                self.theme_function = self.themes.sunset
+                self.colorama_color = Fore.LIGHTYELLOW_EX
+            case 'default' | _:
                 self.theme_function = self.themes.default_theme
                 self.colorama_color = Fore.LIGHTWHITE_EX
 
@@ -589,7 +926,34 @@ class AutoBanana:
         '''
         return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
+    def show_loading_animation(self, message="Loading", duration=1.5):
+        """Show a brief loading animation with theme colors."""
+        term_width, _ = self.get_terminal_size()
+        frames = duration * 10  # 10 FPS
+        
+        for i in range(int(frames)):
+            spinner = self.get_spinner(i)
+            dots = "." * ((i % 4))
+            text = f" {spinner} {message}{dots.ljust(3)} "
+            
+            # Color based on selected theme
+            color_code = self.get_theme_color_code(animated=True)
+            colored = f"{color_code}{text}\033[0m"
+            
+            sys.stdout.write('\r' + colored)
+            sys.stdout.flush()
+            time.sleep(0.1)
+        
+        sys.stdout.write('\r' + ' ' * 30 + '\r')
+        sys.stdout.flush()
+
     def main(self):
+        # Show animated startup with theme animation preview
+        self.show_loading_animation("Initializing AutoBanana", 1.0)
+        self.clear_console()
+        # Show animated banner for 2 seconds to preview theme
+        print(self.theme_function(self.startup_logo, animate=True))
+        self.animated_wait(2, "Loading theme", show_progress=True)
         self.render_banner(self.startup_logo)
         self.register()
         if self.config['run_on_startup']:
@@ -600,6 +964,12 @@ class AutoBanana:
         self.print_config_overview()
         self.print_account_overview(self.account_names)
         while True:
+            # Check for terminal resize and refresh banner if needed
+            new_width, _ = self.get_terminal_size()
+            if abs(new_width - self.console_width) > 10:
+                self.console_width = new_width
+                self.render_banner(self.logo)
+            
             self.account_names = self.steam_account_changer.get_steam_login_user_names()
 
             if self.config['switch_steam_accounts'] and not self.account_names:
@@ -612,7 +982,8 @@ class AutoBanana:
                     if not switched:
                         self.log_event(f"Skipping launches for account {account} due to switch failure.", "warning")
                         continue
-                    time.sleep(10)
+                    # Animated wait while Steam switches accounts
+                    self.animated_account_switch(account, 10)
                     self.open_games(self.config['time_to_wait'])
                     self.game_open_count += 1
                 self.countdown(3 * 60 * 60)
@@ -627,11 +998,20 @@ class AutoBanana:
 
 
 if __name__ == "__main__":
+    auto_banana = None
     try:
-        os.system("title AutoBanana v2.2")
+        os.system("title AutoBanana v2.3 - Animated Edition")
         auto_banana = AutoBanana()
+        # Set initial terminal size, will adapt dynamically afterwards
         auto_banana.set_terminal_size(auto_banana.console_width, 32)
         auto_banana.main()
     except KeyboardInterrupt:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"\n\n{auto_banana.colorama_color}{timestamp} - {Fore.LIGHTGREEN_EX}Program exited gracefully.")
+        if auto_banana:
+            auto_banana.stop_animation_thread()
+            print(f"\n\n{auto_banana.colorama_color}{timestamp} - {Fore.LIGHTGREEN_EX}Program exited gracefully.")
+        else:
+            print(f"\n\n{timestamp} - Program exited gracefully.")
+    finally:
+        if auto_banana:
+            auto_banana.stop_animation_thread()
