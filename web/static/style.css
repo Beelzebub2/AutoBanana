@@ -109,16 +109,21 @@ body[data-page="settings"] .layout {
 }
 
 .mark {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: #0a0c12;
     width: 42px;
     height: 42px;
     border-radius: 14px;
     display: grid;
     place-items: center;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
     box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 .title {

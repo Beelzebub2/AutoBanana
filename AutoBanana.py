@@ -29,6 +29,7 @@ import utils.steam_manager
 APP_DIR = Path(__file__).parent
 LOCK_PATH = APP_DIR / "autobanana.lock"
 LOG_PATH = APP_DIR / "AutoBanana.log"
+ICON_PATH = APP_DIR / "banana.ico"
 UI_PORT = 5055
 UI_HOST = "127.0.0.1"
 
@@ -549,11 +550,17 @@ class AutoBananaService:
             self.log_event("pystray or Pillow not installed; tray icon disabled", "warning")
             return
 
-        def create_image():
-            image = Image.new("RGB", (64, 64), color=(30, 30, 40))
+        def load_icon():
+            if ICON_PATH.exists():
+                try:
+                    return Image.open(ICON_PATH).convert("RGBA")
+                except Exception:
+                    pass
+            # Fallback simple icon
+            image = Image.new("RGBA", (64, 64), color=(30, 30, 40, 255))
             draw = ImageDraw.Draw(image)
-            draw.rectangle([14, 20, 50, 44], fill=(255, 199, 44))
-            draw.rectangle([26, 14, 38, 50], fill=(245, 166, 35))
+            draw.rectangle([14, 20, 50, 44], fill=(255, 199, 44, 255))
+            draw.rectangle([26, 14, 38, 50], fill=(245, 166, 35, 255))
             return image
 
         def on_open(icon, _item):
@@ -568,7 +575,8 @@ class AutoBananaService:
             pystray.MenuItem("Quit", on_quit),
         )
 
-        icon = pystray.Icon("autobanana", create_image(), "AutoBanana", menu)
+        icon_image = load_icon()
+        icon = pystray.Icon("autobanana", icon_image, "AutoBanana", menu)
         threading.Thread(target=icon.run, daemon=True).start()
         self.log_event("Tray icon started")
 
@@ -640,6 +648,11 @@ def api_config():
 @app.route("/static/<path:path>")
 def send_static(path):
     return send_from_directory(app.static_folder, path)
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(str(APP_DIR), "banana.ico")
 
 
 def start_flask():
