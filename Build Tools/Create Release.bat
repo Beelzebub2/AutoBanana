@@ -1,19 +1,13 @@
 @echo off
 
-:: Check if Python is installed using default installation path
-set PYTHON_PATH=C:\Users\%USERNAME%\AppData\Local\Programs\Python\Python312
-if not exist "%PYTHON_PATH%\python.exe" (
-    echo Python is not installed in the default path. Please install Python and add it to your PATH.
-    pause
-    exit /b 1
-)
+
 
 :: Prompt for the version number
 set /p version="Enter the version number (e.g., v1.8): "
 
 :: Update badge in README.md using Python script
 echo Updating badge in README.md...
-"%PYTHON_PATH%\python.exe" update_badge.py %version%
+"python" update_badge.py %version%
 if %errorlevel% neq 0 (
     echo Error updating badge.
     exit /b 1
@@ -21,7 +15,7 @@ if %errorlevel% neq 0 (
 
 :: Update the logo
 echo Updating logo in README.md...
-"%PYTHON_PATH%\python.exe" update_logo.py "autobanana %version%"
+"python" update_logo.py "autobanana %version%"
 if %errorlevel% neq 0 (
     echo Error updating logo.
     exit /b 1
