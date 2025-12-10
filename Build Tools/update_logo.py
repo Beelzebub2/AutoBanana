@@ -175,6 +175,6 @@ if __name__ == "__main__":
         print("Usage: python update_badge.py <version>")
     else:
         result = get_blocky_text(sys.argv[1])
-    file_path = '../logo.txt'
-    with open(file_path, 'w', encoding="utf-8") as file:
-        file.write(result)
+        file_path = '../logo.txt'
+        with open(file_path, 'w', encoding="utf-8") as file:
+            file.write(result)
