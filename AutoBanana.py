@@ -404,7 +404,7 @@ class AutoBananaService:
 
                 if game_batch:
                     self.log_event(f"Waiting {time_to_wait}s before closing newly started games.")
-                    time.sleep(time_to_wait)
+                    self.wait_with_progress(time_to_wait, "Waiting before closing games")
 
                 running_games = find_running_steam_games(all_games)
                 self.close_games(running_games)
@@ -427,6 +427,28 @@ class AutoBananaService:
             if proc.info.get("name") == process_name:
                 proc.terminate()
                 break
+
+    def wait_with_progress(self, duration: int, label: str = "Waiting") -> None:
+        duration = max(0, int(duration))
+        bar_length = 30
+        start = time.time()
+        try:
+            while True:
+                elapsed = time.time() - start
+                ratio = 1.0 if duration == 0 else min(1.0, elapsed / duration)
+                filled = int(bar_length * ratio)
+                bar = "#" * filled + "-" * (bar_length - filled)
+                sys.stdout.write(f"\r{label} [{bar}] {int(elapsed)}s/{duration}s")
+                sys.stdout.flush()
+                if elapsed >= duration:
+                    break
+                time.sleep(0.2)
+        except Exception:
+            # Fall back to a simple sleep if the console is unavailable
+            time.sleep(duration)
+        finally:
+            sys.stdout.write("\r")
+            sys.stdout.flush()
 
     def run_once(self) -> None:
         self.current_state = "running"
