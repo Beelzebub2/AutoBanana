@@ -16,7 +16,7 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 
 ### Features
 - **Automatic Startup:** Configure the script to run on system startup, ensuring the game is managed without user intervention.
-- **Timed Execution:** Opens the game using the Steam URL (`steam://rungameid/2923300`) and waits for a specified duration before closing it. This cycle repeats every three hours.
+- **Timed Execution:** Opens the game using the Steam URL (`steam://rungameid/2923300`) and waits for a specified duration before closing it. This cycle repeats on a configurable interval (`run_interval_seconds` in `config.ini`, default three hours).
 - **Logging:** Logs all actions, including game opening, closing, and startup configurations, for easy monitoring and debugging. This file can be found in `%appdata%/AutoBanana/AutoBanana.log`.
 - **Startup Management:** Easily add or remove AutoBanana from the Windows startup sequence (Windows only).
 - **Customizable Configurations:** Customize settings like program path, time to wait, and installation trigger through a `config.ini` file.
