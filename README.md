@@ -1,4 +1,4 @@
-![Static Badge](https://img.shields.io/badge/Version-v2.5-8ebff1?style=for-the-badge&logo=v)
+![Static Badge](https://img.shields.io/badge/Version-v3.0-8ebff1?style=for-the-badge&logo=v)
 ![Static Badge](https://img.shields.io/badge/Language-python-3776ab?style=for-the-badge&logo=python)
 ![User Count](https://img.shields.io/badge/Total%20Users-1123-green?style=for-the-badge)
 [![GitHub issues](https://img.shields.io/github/issues/Beelzebub2/AutoBanana.svg?style=for-the-badge)](https://github.com/Beelzebub2/AutoBanana/issues)
