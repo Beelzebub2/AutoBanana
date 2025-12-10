@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoBanana Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/app.js"></script>
+</head>
+
+<body data-theme="{{ theme }}" data-page="dashboard">
+    <div class="bg-layers">
+        <div class="gradient"></div>
+        <div class="noise"></div>
+    </div>
+
+    <div id="conn-banner" class="banner hidden">Backend is not reachable. Waiting to reconnect...</div>
+
+    <header class="topbar">
+        <div class="brand">
+            <div class="mark">AB</div>
+            <div>
+                <div class="title">AutoBanana</div>
+                <div class="subtitle">Automate Steam farming with a live console</div>
+            </div>
+        </div>
+        <div class="top-actions">
+            <button id="run-now" class="btn primary">Run Now</button>
+            <button id="stop" class="btn ghost">Stop</button>
+            <a class="btn ghost" href="/settings">Settings</a>
+        </div>
+    </header>
+
+    <main class="layout">
+        <section class="stats">
+            <div class="stat-card">
+                <div class="label">Next Run</div>
+                <div class="value" id="next-run">--</div>
+                <div class="hint" id="next-run-hint">waiting for scheduler</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Last Run</div>
+                <div class="value" id="last-run">--</div>
+                <div class="hint" id="last-run-hint">no runs yet</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Games / Batch</div>
+                <div class="value"><span id="games-count">0</span><span class="divider">|</span><span
+                        id="batch-size">0</span></div>
+                <div class="hint">Configured games / batch size</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Runs Completed</div>
+                <div class="value" id="run-count">0</div>
+                <div class="hint">Successful cycles</div>
+            </div>
+            <div class="stat-card">
+                <div class="label">Steam Accounts</div>
+                <div class="value" id="account-count">0</div>
+                <div class="hint">Remembered accounts detected</div>
+            </div>
+        </section>
+        <section class="card timeline-card">
+            <div class="card-header">
+                <div>
+                    <div class="eyebrow">Scheduler</div>
+                    <h2>Next run timeline</h2>
+                </div>
+                <div class="pill" id="status-pill">Idle</div>
+            </div>
+            <div class="progress-wrap">
+                <div class="progress-label" id="progress-label">Idle</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card console-card">
+            <div class="card-header">
+                <div>
+                    <div class="eyebrow">Live Feed</div>
+                    <h2>Console</h2>
+                </div>
+                <div class="legend">
+                    <span class="dot info"></span>info
+                    <span class="dot success"></span>success
+                    <span class="dot warning"></span>warning
+                    <span class="dot error"></span>error
+                </div>
+            </div>
+            <div class="console" id="console">
+                <div class="console-line">[boot] Waiting for scheduler...</div>
+            </div>
+        </section>
+    </main>
+</body>
+
+</html>

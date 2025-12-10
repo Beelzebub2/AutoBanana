@@ -15,12 +15,12 @@
 AutoBanana is an automated script designed to manage the opening and closing of games through Steam. The primary features of AutoBanana include:
 
 ### Features
-- **Automatic Startup:** Configure the script to run on system startup, ensuring the game is managed without user intervention.
-- **Timed Execution:** Opens the game using the Steam URL (`steam://rungameid/2923300`) and waits for a specified duration before closing it. This cycle repeats on a configurable interval (`run_interval_seconds` in `config.ini`, default three hours).
-- **Logging:** Logs all actions, including game opening, closing, and startup configurations, for easy monitoring and debugging. This file can be found in `%appdata%/AutoBanana/AutoBanana.log`.
-- **Startup Management:** Easily add or remove AutoBanana from the Windows startup sequence (Windows only).
-- **Customizable Configurations:** Customize settings like program path, time to wait, and installation trigger through a `config.ini` file.
-- **Account switching:** Switches between all the saved steam accounts with autologin "Remember me" check box.
+- **Modern web UI:** A Flask-powered dashboard with an animated gradient background, a "fake console" feed, and smooth transitions. All controls live in the browser instead of the terminal.
+- **Adjustable schedule:** Configure the run interval (`run_interval_seconds`) and wait time between launch/close cycles directly from the UI. No more fixed three-hour loop.
+- **Single instance + tray:** AutoBanana keeps a single instance alive, opens the existing UI if already running, and (on Windows) adds a system tray icon to reopen the dashboard.
+- **Automatic Startup:** Configure the script to run on system startup (Windows) with one toggle.
+- **Logging:** Logs all actions to `AutoBanana.log` and streams them into the web console for quick monitoring.
+- **Account switching:** Switches between all saved Steam accounts that have the "Remember me" checkbox enabled.
 
 ### Installation
 

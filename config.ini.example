@@ -8,6 +8,9 @@ games = 2923300,2784840
 
 time_to_wait = 60
 
+; Time between runs in seconds (3 hours by default)
+run_interval_seconds = 10800
+
 ; Number of games to run at once, will loop through your list in batches of this size
 batch_size = 5
 

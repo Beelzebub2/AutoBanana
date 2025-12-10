@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AutoBanana Settings</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script defer src="/static/app.js"></script>
+</head>
+
+<body data-theme="{{ theme }}" data-page="settings">
+    <div class="bg-layers">
+        <div class="gradient"></div>
+        <div class="noise"></div>
+    </div>
+
+    <div id="conn-banner" class="banner hidden">Backend is not reachable. Waiting to reconnect...</div>
+
+    <header class="topbar">
+        <div class="brand">
+            <div class="mark">AB</div>
+            <div>
+                <div class="title">AutoBanana</div>
+                <div class="subtitle">Scheduler preferences</div>
+            </div>
+        </div>
+        <div class="top-actions">
+            <a class="btn ghost" href="/">Back to Dashboard</a>
+        </div>
+    </header>
+
+    <main class="layout narrow">
+        <div class="card" id="controls">
+            <div class="card-header">
+                <div>
+                    <div class="eyebrow">Settings</div>
+                    <h2>Schedule & Preferences</h2>
+                </div>
+                <div class="pill" id="status-pill">Idle</div>
+            </div>
+            <form id="config-form" class="form">
+                <div class="form-row">
+                    <label for="run-interval">Run interval (minutes)</label>
+                    <input type="number" min="1" step="1" id="run-interval" name="run_interval_minutes"
+                        placeholder="180" />
+                </div>
+                <div class="form-row">
+                    <label for="wait-seconds">Time to wait before closing (seconds)</label>
+                    <input type="number" min="10" step="5" id="wait-seconds" name="time_to_wait" placeholder="60" />
+                </div>
+                <div class="form-row">
+                    <label for="batch-size-input">Batch size</label>
+                    <input type="number" min="1" max="20" step="1" id="batch-size-input" name="batch_size"
+                        placeholder="5" />
+                </div>
+                <div class="form-row">
+                    <label>Themes</label>
+                    <div class="chip-row" id="theme-chips">
+                        <button type="button" class="chip" data-theme="fire">Fire</button>
+                        <button type="button" class="chip" data-theme="ice">Ice</button>
+                        <button type="button" class="chip" data-theme="pinkneon">PinkNeon</button>
+                        <button type="button" class="chip" data-theme="rainbow">Rainbow</button>
+                        <button type="button" class="chip" data-theme="matrix">Matrix</button>
+                        <button type="button" class="chip" data-theme="sunset">Sunset</button>
+                        <button type="button" class="chip" data-theme="default">Default</button>
+                    </div>
+                </div>
+                <div class="toggle-row">
+                    <button type="button" class="switch" id="startup-switch" data-key="run_on_startup">
+                        <span class="knob"></span><span class="label">Run on system startup (Windows)</span>
+                    </button>
+                    <button type="button" class="switch" id="switch-accounts-switch" data-key="switch_steam_accounts">
+                        <span class="knob"></span><span class="label">Switch between remembered Steam accounts</span>
+                    </button>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn primary">Save Changes</button>
+                    <span class="save-hint" id="save-status">Unsaved</span>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+
+</html>
