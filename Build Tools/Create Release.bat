@@ -13,13 +13,6 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-:: Update the logo
-echo Updating logo in README.md...
-"python" update_logo.py "autobanana %version%"
-if %errorlevel% neq 0 (
-    echo Error updating logo.
-    exit /b 1
-)
 
 :: Stage the changes
 echo Staging changes...
