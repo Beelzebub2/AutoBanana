@@ -39,9 +39,11 @@ class AutoBanana:
         with open(self.startup_logo_file, 'r', encoding='utf-8') as file:
             self.startup_logo = file.read()
             file.close()
+        self.console_width = max(self.string_width(self.logo), self.string_width(self.startup_logo)) + 20
         self.config = self.read_config()
         self.start_time = datetime.now()
         self.game_open_count = 0
+        self.account_names = []
         self.steam_install_location = self.get_steam_install_location()
         self.theme_function = None
         self.colorama_color = Fore.LIGHTWHITE_EX
@@ -51,6 +53,64 @@ class AutoBanana:
         self.themes = utils.theme_manager
         self.steam_account_changer = utils.steam_manager.SteamAccountChanger()
         self.apply_theme()
+
+    def log_event(self, message, level="info"):
+        color_map = {
+            "info": self.colorama_color,
+            "success": Fore.GREEN,
+            "warning": Fore.YELLOW,
+            "error": Fore.RED,
+        }
+        prefix_map = {
+            "info": "[INFO]",
+            "success": "[ OK ]",
+            "warning": "[WARN]",
+            "error": "[ERR]",
+        }
+
+        color = color_map.get(level, self.colorama_color)
+        prefix = prefix_map.get(level, "[INFO]")
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"{self.colorama_color}{timestamp} {color}{prefix}{Fore.RESET} {message}")
+
+    def render_banner(self, text):
+        self.clear_console()
+        print(self.theme_function(text))
+
+    def print_config_overview(self):
+        lines = [
+            f"Run on startup: {'Yes' if self.config['run_on_startup'] else 'No'}",
+            f"Games configured: {len(self.config['games'])}",
+            f"Batch size: {self.config['batch_size']}",
+            f"Wait between batches: {self.config['time_to_wait']}s",
+            f"Theme: {self.config['theme']}",
+            f"Switch accounts: {'Enabled' if self.config['switch_steam_accounts'] else 'Disabled'}",
+        ]
+        self.log_event("Configuration loaded:")
+        for line in lines:
+            print(f"{self.colorama_color}  - {line}")
+
+    def print_account_overview(self, accounts):
+        if not accounts:
+            self.log_event("No Steam accounts detected with 'Remember password'.", "warning")
+            return
+        self.log_event(f"Detected {len(accounts)} Steam account(s):")
+        for acc in accounts:
+            print(f"{self.colorama_color}  - {acc}")
+
+    def compose_status_line(self, seconds, uptime, account_count):
+        hours, remainder = divmod(seconds, 3600)
+        minutes, seconds_remaining = divmod(remainder, 60)
+
+        time_left = f"Time until next run: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
+        stats = (
+            f"Games: {Fore.RED}{len(self.config['games'])}{Fore.RESET} | "
+            f"Accounts: {Fore.RED}{account_count}{Fore.RESET} | "
+            f"Runs: {Fore.RED}{self.game_open_count}{Fore.RESET} | "
+            f"Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
+        )
+
+        return f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {time_left} | {stats}"
 
     def download_file_if_not_exists(self, file_name, directory):
         '''The function `download_file_if_not_exists` downloads a file from a URL to a specified directory
@@ -109,7 +169,7 @@ class AutoBanana:
         config.read('config.ini')
         return {
             'run_on_startup': config['Settings'].getboolean('run_on_startup', fallback=False),
-            'games': [game.strip() for game in config['Settings'].get('games', '').split(',')],
+            'games': [game.strip() for game in config['Settings'].get('games', '').split(',') if game.strip()],
             'time_to_wait': config['Settings'].getint('time_to_wait', fallback=20),
             'batch_size': config['Settings'].getint('batch_size', fallback=5),
             'theme': config['Settings'].get('theme', fallback='default'),
@@ -271,7 +331,15 @@ class AutoBanana:
         # Update the games list
         self.config = self.read_config()
         games = self.config['games']
-        installed_games = [game for game in games if self.get_game_install_path(game.strip())]
+        installed_games = []
+        removed_games = []
+
+        for game in games:
+            if self.get_game_install_path(game.strip()):
+                installed_games.append(game)
+            else:
+                removed_games.append(game)
+
         new_games_line = f"games = {','.join(installed_games)}\n"
 
         # Write the updated config back to the file, preserving comments
@@ -281,6 +349,11 @@ class AutoBanana:
                     configfile.write(new_games_line)
                 else:
                     configfile.write(line)
+
+        if removed_games:
+            message = "Removed non-installed game IDs from config: " + ", ".join(removed_games)
+            logging.warning(message)
+            self.log_event(message, "warning")
 
     def open_games(self, time_to_wait):
         '''The `open_games` function in Python opens Steam games, logs the action, and checks for running
@@ -340,9 +413,12 @@ class AutoBanana:
                 webbrowser.open(steam_run_url)
                 timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 logging.info(f"{timestamp} - Opened {steam_run_url}")
-                print(f"{self.colorama_color}{timestamp} - {Fore.GREEN}Opened {steam_run_url}")
+                self.log_event(f"Opened {steam_run_url}", "success")
+                return True
             except Exception as e:
                 logging.error(f"Failed to open the game: {e}")
+                self.log_event(f"Failed to open the game: {e}", "error")
+                return False
 
         def batch(iterable, n=1):
             it = iter(iterable)
@@ -353,16 +429,22 @@ class AutoBanana:
                 yield chunk
 
         try:
-            self.clear_console()
-            print(self.theme_function(self.logo))
+            self.render_banner(self.logo)
 
             games = self.config['games']
+            if not games:
+                self.log_event("No games configured to launch.", "warning")
+                return
+
+            self.log_event(f"Launching {len(games)} game(s) in batches of {self.config['batch_size']}.")
 
             for game_batch in batch(games, self.config['batch_size']):
                 for game_id in game_batch:
                     open_single_game(game_id)
                     time.sleep(1)
 
+                if game_batch:
+                    self.log_event(f"Waiting {time_to_wait}s before closing newly started games.")
                 time.sleep(time_to_wait)
 
                 running_games = find_running_steam_games(all_games)
@@ -391,7 +473,7 @@ class AutoBanana:
                     proc.wait()
                     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     logging.info(f"{timestamp} - Closed {proc.info['name']} (PID: {proc.info['pid']})")
-                    print(f"{self.colorama_color}{timestamp} - {Fore.RED}Closed {proc.info['name']} (PID: {proc.info['pid']})")
+                    self.log_event(f"Closed {proc.info['name']} (PID: {proc.info['pid']})", "warning")
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 pass
 
@@ -432,37 +514,13 @@ class AutoBanana:
             displaying the current time and additional status information.
         """
         while seconds:
-            # Calculate the uptime
             uptime = datetime.now() - self.start_time
-
-            # Calculate hours, minutes, and seconds remaining
-            hours, remainder = divmod(seconds, 3600)
-            minutes, seconds_remaining = divmod(remainder, 60)
-
-            # Construct the time left message
-            time_left = (
-                f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - "
-                f"Time until next run: {Fore.CYAN}{hours:02}:{minutes:02}:{seconds_remaining:02}{Fore.RESET}"
-            )
-
-            # Construct the status message
-            status = (
-                f" | {Fore.MAGENTA}Total games: {Fore.RED}{len(self.config['games'])} {Fore.RESET}"
-                f"| {Fore.MAGENTA}Total accounts: {Fore.RED}{len(self.steam_account_changer.get_steam_login_user_names()) if self.config['switch_steam_accounts'] else '1'} {Fore.RESET}"
-                f"| {Fore.MAGENTA}Game opened: {Fore.RED}{self.game_open_count} {Fore.RESET}"
-                f"{'times' if self.game_open_count > 1 else 'time'} "
-                f"| {Fore.MAGENTA}Uptime: {Fore.RED}{str(uptime).split('.')[0]}{Fore.RESET}"
-            )
-
-            # Output the countdown and status information
-            sys.stdout.write('\r' + time_left + status)
+            account_count = len(self.account_names) if self.config['switch_steam_accounts'] else 1
+            status_line = self.compose_status_line(seconds, uptime, account_count)
+            sys.stdout.write('\r' + status_line.ljust(self.console_width))
             sys.stdout.flush()
-
-            # Wait for a second and decrement the countdown
             time.sleep(1)
             seconds -= 1
-
-        # Print a new line after the countdown completes
         print()
 
     def register(self):
@@ -532,38 +590,47 @@ class AutoBanana:
         return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
     def main(self):
-        self.clear_console()
-        print(self.theme_function(self.startup_logo))
+        self.render_banner(self.startup_logo)
         self.register()
         if self.config['run_on_startup']:
             self.add_to_startup()
         else:
             self.remove_from_startup()
         self.account_names = self.steam_account_changer.get_steam_login_user_names()
+        self.print_config_overview()
+        self.print_account_overview(self.account_names)
         while True:
-            if self.config['switch_steam_accounts']:
+            self.account_names = self.steam_account_changer.get_steam_login_user_names()
+
+            if self.config['switch_steam_accounts'] and not self.account_names:
+                self.log_event("Switching is enabled but no Steam accounts with 'Remember password' were found.", "warning")
+
+            if self.config['switch_steam_accounts'] and self.account_names:
                 for account in self.account_names:
-                    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                    print(f"{self.colorama_color}{timestamp} - {Fore.LIGHTWHITE_EX}Switching to account: {account}")
-                    self.steam_account_changer.switch_account(account)
+                    self.log_event(f"Switching to account: {account}")
+                    switched = self.steam_account_changer.switch_account(account)
+                    if not switched:
+                        self.log_event(f"Skipping launches for account {account} due to switch failure.", "warning")
+                        continue
                     time.sleep(10)
                     self.open_games(self.config['time_to_wait'])
-                self.game_open_count += 1
+                    self.game_open_count += 1
                 self.countdown(3 * 60 * 60)
-                self.config = self.read_config()
             else:
                 self.open_games(self.config['time_to_wait'])
                 self.game_open_count += 1
                 self.countdown(3 * 60 * 60)
-            # Update the games list before the next iteration
+
             self.config = self.read_config()
+            self.apply_theme()
+            self.print_config_overview()
 
 
 if __name__ == "__main__":
     try:
         os.system("title AutoBanana v2.2")
         auto_banana = AutoBanana()
-        auto_banana.set_terminal_size(auto_banana.string_width(auto_banana.logo) + 20, 30)
+        auto_banana.set_terminal_size(auto_banana.console_width, 32)
         auto_banana.main()
     except KeyboardInterrupt:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
