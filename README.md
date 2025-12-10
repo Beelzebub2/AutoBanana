@@ -18,7 +18,7 @@ AutoBanana is an automated script designed to manage the opening and closing of 
 - **Automatic Startup:** Configure the script to run on system startup, ensuring the game is managed without user intervention.
 - **Timed Execution:** Opens the game using the Steam URL (`steam://rungameid/2923300`) and waits for a specified duration before closing it. This cycle repeats every three hours.
 - **Logging:** Logs all actions, including game opening, closing, and startup configurations, for easy monitoring and debugging. This file can be found in `%appdata%/AutoBanana/AutoBanana.log`.
-- **Startup Management:** Easily add or remove AutoBanana from the Windows startup sequence.
+- **Startup Management:** Easily add or remove AutoBanana from the Windows startup sequence (Windows only).
 - **Customizable Configurations:** Customize settings like program path, time to wait, and installation trigger through a `config.ini` file.
 - **Account switching:** Switches between all the saved steam accounts with autologin "Remember me" check box.
 
@@ -36,6 +36,13 @@ Simply download and run `AutoBanana-win64.exe`
 - **Install python**  Make sure to add python to PATH it's an option when installing!
 - **Run setup.bat**
 - **Insert game ID's into the config file separated by a comma ','** (you can find the ids on the game properties under the updates page on library or steam shop link)
+
+#### Linux / Ubuntu quick start
+
+- Install Python 3 and Steam (`sudo apt install python3 python3-pip steam`) and sign into Steam once so `loginusers.vdf` exists.
+- If Steam lives outside the default `~/.local/share/Steam`, set `STEAM_PATH=/path/to/steam` before running.
+- Run `bash setup.sh` (or `pip3 install -r requirements.txt` followed by `python3 AutoBanana.py`).
+- Windows-only features: adding to system startup and console title sizing. Everything else runs cross-platform.
 
 ### Development
 

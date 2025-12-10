@@ -9,8 +9,12 @@ import threading
 import time
 import uuid
 import webbrowser
-import winreg as reg
 from datetime import datetime, timedelta
+
+try:  # winreg is Windows-only; fallback to None on Linux/macOS
+    import winreg as reg
+except ImportError:
+    reg = None
 
 import psutil
 import requests
@@ -30,6 +34,7 @@ if os.name == 'nt':
 class AutoBanana:
 
     def __init__(self):
+        self.is_windows = os.name == 'nt'
         self.base_url = "https://raw.githubusercontent.com/Beelzebub2/AutoBanana/main/"
         self.logo_file = "logo.txt"
         self.startup_logo_file = "startup.txt"
@@ -462,6 +467,9 @@ class AutoBanana:
         system boot.
 
         '''
+        if not self.is_windows or reg is None:
+            logging.info("Startup registration is only supported on Windows; skipping.")
+            return
         script_path = os.path.abspath(sys.argv[0])
         key_value = r'Software\Microsoft\Windows\CurrentVersion\Run'
         try:
@@ -483,6 +491,8 @@ class AutoBanana:
         '''The function removes a specific entry from the Windows startup registry key if it exists.
 
         '''
+        if not self.is_windows or reg is None:
+            return
         key_value = r'Software\Microsoft\Windows\CurrentVersion\Run'
         try:
             with reg.OpenKey(reg.HKEY_CURRENT_USER, key_value, 0, reg.KEY_ALL_ACCESS) as open_key:
@@ -494,25 +504,36 @@ class AutoBanana:
             logging.error(f"Failed to remove from startup: {e}")
 
     def get_steam_install_location(self):
-        '''The function `get_steam_install_location` retrieves the installation location of Steam from the
-        Windows registry.
+        '''Locate the Steam installation path across supported platforms.'''
+        # Windows: use registry when available
+        if self.is_windows and reg is not None:
+            try:
+                steam_key = reg.OpenKey(
+                    reg.HKEY_LOCAL_MACHINE,
+                    r"SOFTWARE\Wow6432Node\Valve\Steam",
+                )
+                steam_install_location = reg.QueryValueEx(steam_key, "InstallPath")[0]
+                reg.CloseKey(steam_key)
+                return steam_install_location
+            except FileNotFoundError:
+                logging.error("Steam registry key not found; falling back to default locations.")
+            except Exception as exc:  # pragma: no cover - defensive
+                logging.error(f"Failed to read Steam path from registry: {exc}")
 
-        Returns
-        -------
-            The function `get_steam_install_location` returns the installation location of Steam as a
-        string.
+        # Linux/macOS: check common install locations and env override
+        candidates = [
+            os.environ.get("STEAM_PATH"),
+            os.path.expanduser("~/.local/share/Steam"),
+            os.path.expanduser("~/.steam/steam"),
+            os.path.expanduser("~/.steam/root"),
+        ]
 
-        '''
-        steam_key = reg.OpenKey(
-            reg.HKEY_LOCAL_MACHINE,
-            r"SOFTWARE\Wow6432Node\Valve\Steam",
-        )
+        for path in candidates:
+            if path and os.path.exists(path):
+                return path
 
-        steam_install_location = reg.QueryValueEx(steam_key, "InstallPath")[0]
-
-        reg.CloseKey(steam_key)
-
-        return steam_install_location
+        logging.warning("Steam installation not found. Set STEAM_PATH to override.")
+        return None
 
     def get_game_install_path(self, app_id):
         '''
@@ -528,6 +549,9 @@ class AutoBanana:
         str or None
             The installation path of the game if found, otherwise None.
         '''
+        if not self.steam_install_location:
+            logging.warning("Steam install location is unknown; cannot resolve game paths.")
+            return None
         steam_apps_path = os.path.join(self.steam_install_location, "steamapps")
 
         # Check the main steamapps directory first
@@ -591,6 +615,10 @@ class AutoBanana:
         '''
         games = {}
 
+        if not self.steam_install_location:
+            logging.warning("Steam install location is unknown; skipping installed games discovery.")
+            return games
+
         for game_id in self.config['games']:
             install_path = self.get_game_install_path(game_id)
             if install_path:
@@ -605,6 +633,9 @@ class AutoBanana:
         '''This function updates a configuration file by removing any games that are not installed from the
         list of games, while preserving comments.
         '''
+        if not self.steam_install_location:
+            logging.warning("Steam path not found; skipping config cleanup.")
+            return
         # Read the current config file into memory
         with open("config.ini", "r") as configfile:
             lines = configfile.readlines()
@@ -878,7 +909,9 @@ class AutoBanana:
             print(f"{self.colorama_color}{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - {Fore.GREEN}Usage already logged.")
 
     def set_terminal_size(self, width, height):
-        os.system(f"mode con: cols={width} lines={height}")
+        if self.is_windows:
+            os.system(f"mode con: cols={width} lines={height}")
+        # On non-Windows consoles, changing size is terminal-dependent; skip to avoid side effects.
 
     def string_width(self, multiline_string):
         lines = multiline_string.split('\n')
@@ -1002,10 +1035,11 @@ class AutoBanana:
 if __name__ == "__main__":
     auto_banana = None
     try:
-        os.system("title AutoBanana v2.3 - Animated Edition")
         auto_banana = AutoBanana()
-        # Set initial terminal size, will adapt dynamically afterwards
-        auto_banana.set_terminal_size(auto_banana.console_width, 32)
+        if auto_banana.is_windows:
+            os.system("title AutoBanana v2.3 - Animated Edition")
+            # Set initial terminal size, will adapt dynamically afterwards
+            auto_banana.set_terminal_size(auto_banana.console_width, 32)
         auto_banana.main()
     except KeyboardInterrupt:
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
