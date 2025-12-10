@@ -955,6 +955,8 @@ class AutoBanana:
         print(self.theme_function(self.startup_logo, animate=True))
         self.animated_wait(2, "Loading theme", show_progress=True)
         self.render_banner(self.startup_logo)
+        # Keep the startup menu visible briefly before continuing
+        time.sleep(1.5)
         self.register()
         if self.config['run_on_startup']:
             self.add_to_startup()

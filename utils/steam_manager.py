@@ -171,6 +171,9 @@ class SteamAccountChanger:
         loginusers_vdf = self._load_loginusers()
         users = loginusers_vdf.get('users', {}) if loginusers_vdf else {}
 
+        # Backup full loginusers in-memory and on disk once per switch
+        self._last_backup = loginusers_vdf
+
         target_user_id = None
         for user_id, user_data in users.items():
             if user_data.get('AccountName', '').lower() == username.lower():
@@ -194,7 +197,6 @@ class SteamAccountChanger:
         users[target_user_id] = target_user
 
         # Backup full loginusers in-memory and on disk once per switch
-        self._last_backup = loginusers_vdf
         try:
             if self.loginusers_path and os.path.exists(self.loginusers_path):
                 shutil.copy(self.loginusers_path, self.loginusers_path + ".bak")
@@ -213,7 +215,6 @@ class SteamAccountChanger:
 
         if not self.open_steam():
             logger.error("Failed to restart Steam. Please try manually.")
-            self._restore_loginusers_backup()
             return False
 
         # Restore full loginusers so other accounts remain available after launch
