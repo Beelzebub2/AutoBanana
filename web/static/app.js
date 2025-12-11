@@ -104,21 +104,31 @@ async function fetchStatus() {
             if (fill && label) {
                 const interval = data.interval_seconds || 0;
                 const next = data.next_run_at ? new Date(data.next_run_at).getTime() : null;
-                const last = data.last_run_at ? new Date(data.last_run_at).getTime() : null;
                 let pct = 0;
-                let text = "Waiting";
+                let text = "Idle";
 
-                if (data.state === "running") {
-                    pct = 100;
-                    text = "Running current cycle";
-                    fill.classList.add("loading-anim");
-                } else if (next && interval > 0) {
-                    const now = Date.now();
-                    const remaining = Math.max(0, next - now);
-                    const elapsed = last ? Math.max(0, now - last) : interval - remaining;
-                    pct = Math.min(100, Math.max(0, (elapsed / interval) * 100));
-                    text = `Next in ${relative(data.next_run_at) || "soon"}`;
+                if (data.state === "stopped") {
+                    pct = 0;
+                    text = "Stopped by user";
                     fill.classList.remove("loading-anim");
+                } else {
+                    const wp = data.wait_progress;
+                    if (wp && wp.total > 0) {
+                        // Active waiting action (e.g., waiting before closing games)
+                        pct = Math.min(100, Math.max(0, (wp.elapsed / wp.total) * 100));
+                        text = `${wp.label} (${wp.elapsed}s / ${wp.total}s)`;
+                        fill.classList.remove("loading-anim");
+                    } else if (data.state === "running") {
+                        pct = 100;
+                        text = "Running current cycle";
+                        fill.classList.add("loading-anim");
+                    } else if (next && interval > 0) {
+                        const now = Date.now();
+                        const remaining = Math.max(0, next - now);
+                        pct = Math.min(100, Math.max(0, ((interval * 1000 - remaining) / (interval * 1000)) * 100));
+                        text = `Next in ${relative(data.next_run_at) || "soon"}`;
+                        fill.classList.remove("loading-anim");
+                    }
                 }
 
                 fill.style.width = `${pct}%`;
@@ -202,10 +212,35 @@ async function runNow() {
 async function stopScheduler() {
     try {
         await fetch("/api/stop", { method: "POST" });
-        appendLog({ level: "warning", timestamp: Date.now() / 1000, message: "Scheduler stopped" });
+        appendLog({ level: "warning", timestamp: Date.now() / 1000, message: "Scheduler stopped by user" });
+        showNotification("Scheduler stopped", "All running games have been closed.");
+        // Immediately update progress bar
+        const fill = el("progress-fill");
+        const label = el("progress-label");
+        const statusPill = el("status-pill");
+        if (fill) {
+            fill.style.width = "0%";
+            fill.classList.remove("loading-anim");
+        }
+        if (label) label.textContent = "Stopped by user";
+        if (statusPill) statusPill.textContent = "STOPPED";
     } catch (err) {
         appendLog({ level: "error", timestamp: Date.now() / 1000, message: "Could not stop scheduler" });
     }
+}
+
+function showNotification(title, body) {
+    // In-page toast notification
+    let toast = document.getElementById("toast");
+    if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "toast";
+        toast.className = "toast";
+        document.body.appendChild(toast);
+    }
+    toast.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
+    toast.classList.add("show");
+    setTimeout(() => toast.classList.remove("show"), 4000);
 }
 
 function init() {
@@ -231,8 +266,8 @@ function init() {
 
     fetchStatus();
     fetchLogs();
-    setInterval(fetchStatus, 10000);
-    setTimeout(() => setInterval(fetchLogs, 2400), 800);
+    setInterval(fetchStatus, 500);
+    setTimeout(() => setInterval(fetchLogs, 1000), 300);
 }
 
 document.addEventListener("DOMContentLoaded", init);

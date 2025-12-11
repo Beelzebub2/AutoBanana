@@ -603,3 +603,39 @@ select:focus {
         min-height: 220px;
     }
 }
+
+/* Toast notification */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: linear-gradient(135deg, rgba(242, 193, 59, 0.95), rgba(52, 199, 193, 0.9));
+    color: #0c0f17;
+    padding: 14px 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 200ms ease, transform 200ms ease;
+    z-index: 100;
+    pointer-events: none;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast strong {
+    font-size: 15px;
+}
+
+.toast span {
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.85;
+}

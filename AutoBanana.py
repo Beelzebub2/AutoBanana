@@ -67,6 +67,7 @@ class AutoBananaService:
         self.worker_thread: Optional[threading.Thread] = None
         self.next_run_at: Optional[datetime] = None
         self.last_run_at: Optional[datetime] = None
+        self.wait_progress: Optional[Dict] = None  # {elapsed, total, label}
         self.lock_fd: Optional[int] = None
         self.ui_url = f"http://{UI_HOST}:{UI_PORT}"
 
@@ -432,9 +433,11 @@ class AutoBananaService:
         duration = max(0, int(duration))
         bar_length = 30
         start = time.time()
+        self.wait_progress = {"elapsed": 0, "total": duration, "label": label}
         try:
             while True:
                 elapsed = time.time() - start
+                self.wait_progress = {"elapsed": int(elapsed), "total": duration, "label": label}
                 ratio = 1.0 if duration == 0 else min(1.0, elapsed / duration)
                 filled = int(bar_length * ratio)
                 bar = "#" * filled + "-" * (bar_length - filled)
@@ -449,6 +452,7 @@ class AutoBananaService:
         finally:
             sys.stdout.write("\r")
             sys.stdout.flush()
+            self.wait_progress = None
 
     def run_once(self) -> None:
         self.current_state = "running"
@@ -529,8 +533,24 @@ class AutoBananaService:
         if self.worker_thread:
             self.worker_thread.join(timeout=3)
         self.worker_thread = None
+        self.wait_progress = None
         self.current_state = "stopped"
         self.log_event("Scheduler paused", "warning")
+        # Force close any running games
+        self._force_close_games()
+
+    def _force_close_games(self) -> None:
+        """Terminate all currently running games that were opened by AutoBanana."""
+        all_games = self.get_steam_games()
+        if not all_games:
+            return
+        for proc in psutil.process_iter(["pid", "name"]):
+            try:
+                if proc.info.get("name") in all_games:
+                    proc.terminate()
+                    self.log_event(f"Force closed {proc.info['name']} (PID: {proc.info['pid']})", "warning")
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                continue
 
     def ensure_worker(self) -> None:
         if not self.worker_thread or not self.worker_thread.is_alive():
@@ -554,6 +574,7 @@ class AutoBananaService:
             "running": self.worker_thread.is_alive() if self.worker_thread else False,
             "state": self.current_state,
             "interval_seconds": self.config.get("run_interval_seconds", 10800),
+            "wait_progress": self.wait_progress,
         }
 
     def open_ui(self) -> None:
