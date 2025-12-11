@@ -9,7 +9,7 @@ import time
 import uuid
 import webbrowser
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from pathlib import Path
 from typing import Deque, Dict, List, Optional
 try:  # winreg is Windows-only; fallback to None on Linux/macOS
@@ -171,7 +171,7 @@ class AutoBananaService:
     # Logging helpers
     # ------------------------------------------------------------
     def log_event(self, message: str, level: str = "info") -> None:
-        timestamp = datetime.utcnow().timestamp()
+        timestamp = datetime.now(UTC).timestamp()
         entry = {"timestamp": timestamp, "level": level, "message": message}
         self.events.append(entry)
 
