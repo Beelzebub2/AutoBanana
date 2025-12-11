@@ -27,66 +27,108 @@
             <div class="mark"><img src="/favicon.ico" alt="AutoBanana icon" /></div>
             <div>
                 <div class="title">AutoBanana</div>
-                <div class="subtitle">Automate Steam farming with a live console</div>
+                <div class="subtitle">Steam farming cockpit</div>
             </div>
         </div>
         <div class="top-actions">
-            <button id="run-now" class="btn primary">Run Now</button>
-            <button id="stop" class="btn ghost">Stop</button>
             <a class="btn ghost" href="/settings">Settings</a>
         </div>
     </header>
 
-    <main class="layout">
-        <section class="stats">
-            <div class="stat-card">
-                <div class="label">Next Run</div>
-                <div class="value" id="next-run">--</div>
-                <div class="hint" id="next-run-hint">waiting for scheduler</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Last Run</div>
-                <div class="value" id="last-run">--</div>
-                <div class="hint" id="last-run-hint">no runs yet</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Games / Batch</div>
-                <div class="value"><span id="games-count">0</span><span class="divider">|</span><span
-                        id="batch-size">0</span></div>
-                <div class="hint">Configured games / batch size</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Runs Completed</div>
-                <div class="value" id="run-count">0</div>
-                <div class="hint">Successful cycles</div>
-            </div>
-            <div class="stat-card">
-                <div class="label">Steam Accounts</div>
-                <div class="value" id="account-count">0</div>
-                <div class="hint">Remembered accounts detected</div>
-            </div>
-        </section>
-        <section class="card timeline-card">
-            <div class="card-header">
+    <main class="dashboard-shell">
+        <section class="card hero-panel">
+            <div class="hero-heading">
                 <div>
-                    <div class="eyebrow">Scheduler</div>
-                    <h2>Next run timeline</h2>
+                    <div class="eyebrow">Scheduler state</div>
+                    <h1 id="hero-state">Idle</h1>
+                    <p class="hero-copy">AutoBanana rotates through saved Steam accounts, opens configured games, and
+                        reports live console output.</p>
                 </div>
-                <div class="pill" id="status-pill">Idle</div>
+                <span class="pill" id="status-pill">IDLE</span>
             </div>
-            <div class="progress-wrap">
-                <div class="progress-label" id="progress-label">Idle</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" id="progress-fill"></div>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Next run</div>
+                    <div class="kpi-value" id="kpi-next-run">--</div>
+                    <div class="kpi-hint" id="kpi-next-hint">waiting</div>
                 </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Last run</div>
+                    <div class="kpi-value" id="kpi-last-run">--</div>
+                    <div class="kpi-hint" id="kpi-last-hint">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Accounts</div>
+                    <div class="kpi-value" id="kpi-accounts">0</div>
+                    <div class="kpi-hint">Remembered profiles</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Games configured</div>
+                    <div class="kpi-value" id="kpi-games">0</div>
+                    <div class="kpi-hint">Loaded from config</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Batch size</div>
+                    <div class="kpi-value" id="kpi-batch">0</div>
+                    <div class="kpi-hint">Per launch wave</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Runs completed</div>
+                    <div class="kpi-value" id="kpi-runs">0</div>
+                    <div class="kpi-hint">Successful cycles</div>
+                </div>
+            </div>
+            <div class="control-actions">
+                <button id="run-now" class="btn primary">Run Cycle</button>
+                <button id="stop" class="btn ghost danger">Stop & Close Games</button>
             </div>
         </section>
 
-        <section class="card console-card">
+        <section class="split-grid">
+            <article class="card timeline-card panel">
+                <div class="card-header">
+                    <div>
+                        <div class="eyebrow">Next interval</div>
+                        <h2>Scheduler timeline</h2>
+                    </div>
+                </div>
+                <div class="progress-wrap">
+                    <div class="progress-label" id="progress-label">Idle</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card account-card panel">
+                <div class="card-header">
+                    <div>
+                        <div class="eyebrow">Account rotation</div>
+                        <h2>Steam switch progress</h2>
+                    </div>
+                    <span class="pill subtle" id="account-progress-pill">Idle</span>
+                </div>
+                <p class="account-copy">Watch AutoBanana step through each profile so you always know where the run is
+                    focused.</p>
+                <div class="account-progress">
+                    <div class="account-progress-label" id="account-progress-title">No switch in progress</div>
+                    <div class="account-progress-meta">
+                        <span id="account-progress-count">0 accounts ready</span>
+                        <span id="account-progress-account">--</span>
+                    </div>
+                    <div class="account-progress-bar">
+                        <div class="account-progress-fill" id="account-progress-fill"></div>
+                    </div>
+                </div>
+                <div class="account-pill-wrap" id="account-pill-wrap"></div>
+            </article>
+        </section>
+
+        <section class="card console-card panel">
             <div class="card-header">
                 <div>
                     <div class="eyebrow">Live Feed</div>
-                    <h2>Console</h2>
+                    <h2>Console output</h2>
                 </div>
                 <div class="legend">
                     <span class="dot info"></span>info

@@ -22,6 +22,58 @@ const updateFormEditingFlag = () => {
     state.formEditing = state.manualEdit || state.formFocusDepth > 0;
 };
 
+function updateAccountProgress(progress, accounts) {
+    const fill = el("account-progress-fill");
+    const title = el("account-progress-title");
+    const pill = el("account-progress-pill");
+    const count = el("account-progress-count");
+    const active = el("account-progress-account");
+    const list = el("account-pill-wrap");
+    if (!fill || !title || !pill || !count || !active || !list) return;
+
+    const total = progress?.total ?? accounts.length ?? 0;
+    const completed = Math.min(progress?.completed ?? 0, total || 0);
+    const pct = total > 0 ? Math.min(100, Math.max(0, Math.round((completed / total) * 100))) : 0;
+
+    fill.style.width = `${pct}%`;
+    title.textContent = progress?.message || (total ? "All accounts idle" : "No Steam profiles detected");
+    pill.textContent = progress?.phase ? progress.phase.replace(/_/g, " ").toUpperCase() : (total ? "IDLE" : "NO ACCOUNTS");
+    pill.classList.toggle("alert", progress?.phase === "failed");
+    pill.classList.toggle("active", Boolean(progress));
+
+    if (total) {
+        count.textContent = `${completed}/${total} completed`;
+    } else {
+        count.textContent = "0 accounts configured";
+    }
+
+    if (progress?.current_account) {
+        active.textContent = `Active: ${progress.current_account}`;
+    } else if (accounts.length) {
+        active.textContent = `Next: ${accounts[0]}`;
+    } else {
+        active.textContent = "--";
+    }
+
+    list.innerHTML = "";
+    if (accounts.length) {
+        accounts.forEach((name) => {
+            const chip = document.createElement("span");
+            chip.className = "account-pill";
+            if (progress?.current_account && progress.current_account.toLowerCase() === name.toLowerCase()) {
+                chip.classList.add("active");
+            }
+            chip.textContent = name;
+            list.appendChild(chip);
+        });
+    } else {
+        const chip = document.createElement("span");
+        chip.className = "account-pill muted";
+        chip.textContent = "No remembered accounts";
+        list.appendChild(chip);
+    }
+}
+
 function beginFormFocus() {
     state.formFocusDepth += 1;
     updateFormEditingFlag();
@@ -88,25 +140,37 @@ async function fetchStatus() {
         }
 
         const statusPill = el("status-pill");
-
-        if (el("next-run")) {
-            el("next-run").textContent = fmtTime(data.next_run_at);
-            el("next-run-hint").textContent = relative(data.next_run_at) || "waiting";
+        const heroState = el("hero-state");
+        const stateLabel = (data.state || (data.running ? "running" : "idle"))
+            .replace(/_/g, " ")
+            .replace(/^(.)/, (m) => m.toUpperCase());
+        if (heroState) heroState.textContent = stateLabel;
+        if (statusPill) {
+            const pillLabel = data.state ? data.state.toUpperCase() : (data.running ? "RUNNING" : "IDLE");
+            statusPill.textContent = pillLabel;
+            statusPill.classList.toggle("active", data.state === "running");
+            statusPill.classList.toggle("alert", data.state === "stopped");
         }
-        if (el("last-run")) {
-            el("last-run").textContent = fmtTime(data.last_run_at);
-            el("last-run-hint").textContent = relative(data.last_run_at) || "--";
-        }
-        const games = el("games-count");
-        const batch = el("batch-size");
-        const runs = el("run-count");
-        const accounts = el("account-count");
-        if (games) games.textContent = (cfg.games || []).length;
-        if (batch) batch.textContent = cfg.batch_size ?? 0;
-        if (runs) runs.textContent = data.game_open_count ?? 0;
-        if (accounts) accounts.textContent = data.accounts_count ?? 0;
 
-        if (statusPill) statusPill.textContent = data.state ? data.state.toUpperCase() : (data.running ? "RUNNING" : "IDLE");
+        const setText = (id, value, fallback = "--") => {
+            const elRef = el(id);
+            if (elRef) {
+                elRef.textContent = value ?? fallback;
+            }
+        };
+
+        setText("kpi-next-run", fmtTime(data.next_run_at));
+        setText("kpi-next-hint", relative(data.next_run_at) || "waiting");
+        setText("kpi-last-run", fmtTime(data.last_run_at));
+        setText("kpi-last-hint", relative(data.last_run_at) || "--");
+        setText("kpi-accounts", data.accounts_count ?? 0, "0");
+        setText("kpi-games", (cfg.games || []).length ?? 0, "0");
+        setText("kpi-batch", cfg.batch_size ?? 0, "0");
+        setText("kpi-runs", data.game_open_count ?? 0, "0");
+
+        if (page === "dashboard") {
+            updateAccountProgress(data.switch_progress, data.accounts || []);
+        }
 
         const themeName = cfg.theme || "default";
         if (page === "settings") {
@@ -237,6 +301,10 @@ async function runNow() {
     try {
         await fetch("/api/run", { method: "POST" });
         appendLog({ level: "info", timestamp: Date.now() / 1000, message: "Run queued" });
+        const consoleNode = consoleEl();
+        if (consoleNode) {
+            consoleNode.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
     } catch (err) {
         appendLog({ level: "error", timestamp: Date.now() / 1000, message: "Could not queue run" });
     }

@@ -68,6 +68,7 @@ class AutoBananaService:
         self.next_run_at: Optional[datetime] = None
         self.last_run_at: Optional[datetime] = None
         self.wait_progress: Optional[Dict] = None  # {elapsed, total, label}
+        self.switch_progress: Optional[Dict] = None  # {total, completed, phase, current_account, message}
         self.lock_fd: Optional[int] = None
         self.ui_url = f"http://{UI_HOST}:{UI_PORT}"
 
@@ -397,11 +398,22 @@ class AutoBananaService:
                 return
 
             self.log_event(f"Launching {len(games)} game(s) in batches of {self.config['batch_size']}.")
+            if self.stop_event.is_set():
+                self.log_event("Stop requested; skipping new launches.", "warning")
+                return
 
             for game_batch in batch(games, self.config["batch_size"]):
+                if self.stop_event.is_set():
+                    self.log_event("Stop requested; aborting remaining batches.", "warning")
+                    break
                 for game_id in game_batch:
+                    if self.stop_event.is_set():
+                        break
                     open_single_game(game_id)
                     time.sleep(1)
+
+                if self.stop_event.is_set():
+                    break
 
                 if game_batch:
                     self.log_event(f"Waiting {time_to_wait}s before closing newly started games.")
@@ -409,6 +421,8 @@ class AutoBananaService:
 
                 running_games = find_running_steam_games(all_games)
                 self.close_games(running_games)
+                if self.stop_event.is_set():
+                    break
         except Exception as exc:
             self.log_event(f"Failed to open or close the game: {exc}", "error")
 
@@ -433,8 +447,12 @@ class AutoBananaService:
         duration = max(0, int(duration))
         start = time.time()
         self.wait_progress = {"elapsed": 0, "total": duration, "label": label}
+        interrupted = False
         try:
             while True:
+                if self.stop_event.is_set():
+                    interrupted = True
+                    break
                 elapsed = time.time() - start
                 self.wait_progress = {"elapsed": int(elapsed), "total": duration, "label": label}
                 if elapsed >= duration:
@@ -442,6 +460,8 @@ class AutoBananaService:
                 time.sleep(0.2)
         finally:
             self.wait_progress = None
+            if interrupted:
+                self.log_event(f"Stop requested during '{label}'. Exiting early.", "warning")
 
     def run_once(self) -> None:
         self.current_state = "running"
@@ -450,19 +470,73 @@ class AutoBananaService:
         self.account_names = self.steam_account_changer.get_steam_login_user_names()
         self.last_run_at = datetime.now()
         self.log_event("Starting scheduled run")
+        self.switch_progress = None
 
         if self.config.get("switch_steam_accounts") and self.account_names:
-            for account in self.account_names:
+            total_accounts = len(self.account_names)
+            self.switch_progress = {
+                "total": total_accounts,
+                "completed": 0,
+                "phase": "queued",
+                "current_account": None,
+                "message": "Preparing account rotation",
+            }
+            for index, account in enumerate(self.account_names, start=1):
+                if self.stop_event.is_set():
+                    self.switch_progress = {
+                        "total": total_accounts,
+                        "completed": index - 1,
+                        "phase": "aborted",
+                        "current_account": account,
+                        "message": "Stop requested",
+                    }
+                    break
+
                 self.log_event(f"Switching to account: {account}")
+                self.switch_progress = {
+                    "total": total_accounts,
+                    "completed": index - 1,
+                    "phase": "switching",
+                    "current_account": account,
+                    "message": f"Switching to {account}",
+                }
                 switched = self.steam_account_changer.switch_account(account)
                 if not switched:
                     self.log_event(f"Skipping launches for account {account} due to switch failure.", "warning")
+                    self.switch_progress = {
+                        "total": total_accounts,
+                        "completed": index - 1,
+                        "phase": "failed",
+                        "current_account": account,
+                        "message": f"Switch failed for {account}",
+                    }
                     continue
+
+                self.switch_progress = {
+                    "total": total_accounts,
+                    "completed": index - 1,
+                    "phase": "launching",
+                    "current_account": account,
+                    "message": f"Launching games for {account}",
+                }
                 self.open_games(self.config.get("time_to_wait", 60))
                 self.game_open_count += 1
+                self.switch_progress = {
+                    "total": total_accounts,
+                    "completed": index,
+                    "phase": "complete",
+                    "current_account": account,
+                    "message": f"Finished {account}",
+                }
+            self.switch_progress = None
         else:
-            self.open_games(self.config.get("time_to_wait", 60))
-            self.game_open_count += 1
+            if not self.stop_event.is_set():
+                self.open_games(self.config.get("time_to_wait", 60))
+                self.game_open_count += 1
+
+        if self.stop_event.is_set():
+            self.current_state = "stopped"
+            return
 
         self.schedule_next_run()
         self.current_state = "waiting"
@@ -513,6 +587,7 @@ class AutoBananaService:
         if self.worker_thread:
             self.worker_thread.join(timeout=3)
         self.release_lock()
+        self.switch_progress = None
         self.current_state = "stopped"
         self.log_event("Scheduler stopped", "warning")
 
@@ -523,6 +598,7 @@ class AutoBananaService:
             self.worker_thread.join(timeout=3)
         self.worker_thread = None
         self.wait_progress = None
+        self.switch_progress = None
         self.current_state = "stopped"
         self.log_event("Scheduler paused", "warning")
         # Force close any running games
@@ -564,6 +640,7 @@ class AutoBananaService:
             "state": self.current_state,
             "interval_seconds": self.config.get("run_interval_seconds", 10800),
             "wait_progress": self.wait_progress,
+            "switch_progress": self.switch_progress,
         }
 
     def open_ui(self) -> None:
