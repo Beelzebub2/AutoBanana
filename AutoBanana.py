@@ -431,27 +431,16 @@ class AutoBananaService:
 
     def wait_with_progress(self, duration: int, label: str = "Waiting") -> None:
         duration = max(0, int(duration))
-        bar_length = 30
         start = time.time()
         self.wait_progress = {"elapsed": 0, "total": duration, "label": label}
         try:
             while True:
                 elapsed = time.time() - start
                 self.wait_progress = {"elapsed": int(elapsed), "total": duration, "label": label}
-                ratio = 1.0 if duration == 0 else min(1.0, elapsed / duration)
-                filled = int(bar_length * ratio)
-                bar = "#" * filled + "-" * (bar_length - filled)
-                sys.stdout.write(f"\r{label} [{bar}] {int(elapsed)}s/{duration}s")
-                sys.stdout.flush()
                 if elapsed >= duration:
                     break
                 time.sleep(0.2)
-        except Exception:
-            # Fall back to a simple sleep if the console is unavailable
-            time.sleep(duration)
         finally:
-            sys.stdout.write("\r")
-            sys.stdout.flush()
             self.wait_progress = None
 
     def run_once(self) -> None:

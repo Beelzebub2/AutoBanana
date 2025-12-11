@@ -83,6 +83,9 @@ async function fetchStatus() {
         state.offline = false;
         setBanner(false);
         const cfg = data.config || {};
+        if (page === "settings" && state.formEditing) {
+            return;
+        }
 
         const statusPill = el("status-pill");
 
@@ -106,23 +109,20 @@ async function fetchStatus() {
         if (statusPill) statusPill.textContent = data.state ? data.state.toUpperCase() : (data.running ? "RUNNING" : "IDLE");
 
         const themeName = cfg.theme || "default";
-        // Populate form (only on settings page), but avoid overriding while user is editing
         if (page === "settings") {
-            if (!state.formEditing) {
-                if (el("run-interval")) el("run-interval").value = Math.round((cfg.run_interval_seconds || 0) / 60) || "";
-                if (el("wait-seconds")) el("wait-seconds").value = cfg.time_to_wait || "";
-                if (el("batch-size-input")) el("batch-size-input").value = cfg.batch_size || "";
+            if (el("run-interval")) el("run-interval").value = Math.round((cfg.run_interval_seconds || 0) / 60) || "";
+            if (el("wait-seconds")) el("wait-seconds").value = cfg.time_to_wait || "";
+            if (el("batch-size-input")) el("batch-size-input").value = cfg.batch_size || "";
 
-                document.querySelectorAll("#theme-chips .chip").forEach((chip) => {
-                    chip.classList.toggle("active", chip.dataset.theme === themeName);
-                });
+            document.querySelectorAll("#theme-chips .chip").forEach((chip) => {
+                chip.classList.toggle("active", chip.dataset.theme === themeName);
+            });
 
-                const startup = document.querySelector("#startup-switch");
-                const switchAccounts = document.querySelector("#switch-accounts-switch");
-                if (startup) startup.classList.toggle("active", Boolean(cfg.run_on_startup));
-                if (switchAccounts) switchAccounts.classList.toggle("active", Boolean(cfg.switch_steam_accounts));
-                setTheme(themeName);
-            }
+            const startup = document.querySelector("#startup-switch");
+            const switchAccounts = document.querySelector("#switch-accounts-switch");
+            if (startup) startup.classList.toggle("active", Boolean(cfg.run_on_startup));
+            if (switchAccounts) switchAccounts.classList.toggle("active", Boolean(cfg.switch_steam_accounts));
+            setTheme(themeName);
         } else {
             setTheme(themeName);
         }

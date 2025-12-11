@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import shutil
@@ -97,16 +98,32 @@ class SteamAccountChanger:
             logger.error(f"Unable to write loginusers.vdf: {exc}")
             return False
 
+    def _backup_loginusers(self, loginusers: Dict):
+        """Keep an in-memory copy and refresh the on-disk .bak for restores."""
+        self._last_backup = copy.deepcopy(loginusers) if loginusers else None
+        if self.loginusers_path and os.path.exists(self.loginusers_path):
+            try:
+                shutil.copy(self.loginusers_path, self.loginusers_path + ".bak")
+            except Exception as exc:
+                logger.warning(f"Unable to snapshot loginusers.vdf: {exc}")
+
     def _write_single_user_loginusers(self, target_user_id: str, user_data: Dict) -> bool:
         """Temporarily write loginusers with only the target user to skip the account picker."""
         minimal = {"users": {target_user_id: user_data}}
         return self._write_loginusers(minimal)
 
     def _restore_loginusers_backup(self):
-        if self._last_backup is None:
-            return
-        self._write_loginusers(self._last_backup)
-        self._last_backup = None
+        if self._last_backup:
+            if self._write_loginusers(self._last_backup):
+                self._last_backup = None
+                return
+        bak_path = f"{self.loginusers_path}.bak" if self.loginusers_path else None
+        if bak_path and os.path.exists(bak_path):
+            try:
+                shutil.copy(bak_path, self.loginusers_path)
+                self._last_backup = None
+            except Exception as exc:
+                logger.error(f"Unable to restore Steam account list backup: {exc}")
 
     def _set_autologin_registry(self, username: str) -> bool:
         if not self.is_windows or reg is None:
@@ -189,7 +206,7 @@ class SteamAccountChanger:
         loginusers_vdf = self._load_loginusers()
         users = loginusers_vdf.get("users", {}) if loginusers_vdf else {}
 
-        self._last_backup = loginusers_vdf
+        self._backup_loginusers(loginusers_vdf)
 
         target_user_id = None
         for user_id, user_data in users.items():
@@ -212,22 +229,24 @@ class SteamAccountChanger:
         target_user = users.get(target_user_id, {})
         users[target_user_id] = target_user
 
-        try:
-            if self.loginusers_path and os.path.exists(self.loginusers_path):
-                shutil.copy(self.loginusers_path, self.loginusers_path + ".bak")
-        except Exception:
-            pass
+        single_user_written = False
 
         if not self._write_single_user_loginusers(target_user_id, target_user):
+            self._restore_loginusers_backup()
             return False
+        single_user_written = True
 
         if not self._set_autologin_registry(username):
+            if single_user_written:
+                self._restore_loginusers_backup()
             return False
 
         self.kill_steam()
 
         if not self.open_steam():
             logger.error("Failed to restart Steam. Please try manually.")
+            if single_user_written:
+                self._restore_loginusers_backup()
             return False
 
         self._restore_loginusers_backup()
