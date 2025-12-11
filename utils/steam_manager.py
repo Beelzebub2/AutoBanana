@@ -4,7 +4,7 @@ import os
 import shutil
 import subprocess
 import time
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 try:  # winreg is Windows-only
     import winreg as reg
@@ -125,6 +125,14 @@ class SteamAccountChanger:
             except Exception as exc:
                 logger.error(f"Unable to restore Steam account list backup: {exc}")
 
+    def _notify_progress(self, progress_hook: Optional[Callable[[int, int, str], None]], step: int, total: int, message: str) -> None:
+        if not progress_hook:
+            return
+        try:
+            progress_hook(step, total, message)
+        except Exception:
+            pass
+
     def _set_autologin_registry(self, username: str) -> bool:
         if not self.is_windows or reg is None:
             return True
@@ -197,12 +205,14 @@ class SteamAccountChanger:
         except subprocess.CalledProcessError:
             return False
 
-    def switch_account(self, username):
+    def switch_account(self, username, progress_hook: Optional[Callable[[int, int, str], None]] = None):
         """Switch Steam account by adjusting loginusers and restarting Steam."""
         if not username:
             logger.error("No username provided to switch_account.")
             return False
 
+        total_steps = 6
+        self._notify_progress(progress_hook, 1, total_steps, f"Locating account '{username}'")
         loginusers_vdf = self._load_loginusers()
         users = loginusers_vdf.get("users", {}) if loginusers_vdf else {}
 
@@ -219,6 +229,7 @@ class SteamAccountChanger:
             return False
 
         self.kill_steam()
+        self._notify_progress(progress_hook, 2, total_steps, "Stopping running Steam processes")
 
         for user_id, user_data in users.items():
             is_target = user_id == target_user_id
@@ -235,11 +246,13 @@ class SteamAccountChanger:
             self._restore_loginusers_backup()
             return False
         single_user_written = True
+        self._notify_progress(progress_hook, 3, total_steps, f"Writing single-user login file for {username}")
 
         if not self._set_autologin_registry(username):
             if single_user_written:
                 self._restore_loginusers_backup()
             return False
+        self._notify_progress(progress_hook, 4, total_steps, "Updating auto-login registry")
 
         self.kill_steam()
 
@@ -248,8 +261,10 @@ class SteamAccountChanger:
             if single_user_written:
                 self._restore_loginusers_backup()
             return False
+        self._notify_progress(progress_hook, 5, total_steps, "Restarting Steam client")
 
         self._restore_loginusers_backup()
+        self._notify_progress(progress_hook, 6, total_steps, "Restoring full account roster")
 
         logger.info(f"Switched to Steam account: {username}")
         return True

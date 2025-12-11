@@ -4,6 +4,7 @@ const state = {
     formEditing: false,
     formFocusDepth: 0,
     manualEdit: false,
+    serviceState: "idle",
     themeMap: {
         fire: { start: "#2b1328", end: "#ff6b4a", accent: "#ffcf6f", accent2: "#ff8a5c" },
         ice: { start: "#0d1b2a", end: "#6ea8ff", accent: "#9ee8ff", accent2: "#7dd3fc" },
@@ -22,7 +23,7 @@ const updateFormEditingFlag = () => {
     state.formEditing = state.manualEdit || state.formFocusDepth > 0;
 };
 
-function updateAccountProgress(progress, accounts) {
+function updateAccountProgress(progress, accounts, canSwitch) {
     const fill = el("account-progress-fill");
     const title = el("account-progress-title");
     const pill = el("account-progress-pill");
@@ -58,11 +59,21 @@ function updateAccountProgress(progress, accounts) {
     list.innerHTML = "";
     if (accounts.length) {
         accounts.forEach((name) => {
-            const chip = document.createElement("span");
+            const chip = document.createElement("button");
+            chip.type = "button";
             chip.className = "account-pill";
             if (progress?.current_account && progress.current_account.toLowerCase() === name.toLowerCase()) {
                 chip.classList.add("active");
             }
+
+            if (canSwitch) {
+                chip.classList.add("clickable");
+                chip.addEventListener("click", () => requestAccountSwitch(name));
+            } else {
+                chip.disabled = true;
+                chip.classList.add("disabled");
+            }
+
             chip.textContent = name;
             list.appendChild(chip);
         });
@@ -71,6 +82,56 @@ function updateAccountProgress(progress, accounts) {
         chip.className = "account-pill muted";
         chip.textContent = "No remembered accounts";
         list.appendChild(chip);
+    }
+}
+
+function calculateSwitchStepPct(progress) {
+    if (!progress) return null;
+    const total = Number(progress.step_total);
+    const step = Number(progress.step);
+    if (!Number.isFinite(total) || total <= 0) {
+        return null;
+    }
+    const safeStep = Math.min(Math.max(Number.isFinite(step) ? step : 0, 0), total);
+    return Math.min(100, Math.max(0, (safeStep / total) * 100));
+}
+
+function updateSwitchStepBanner(progress) {
+    const banner = el("switch-step-banner");
+    const title = el("switch-step-title");
+    const count = el("switch-step-count");
+    const detail = el("switch-step-detail");
+    const fill = el("switch-step-fill");
+    if (!banner || !title || !count || !detail || !fill) {
+        return;
+    }
+
+    if (!progress) {
+        banner.classList.add("hidden");
+        fill.style.width = "0%";
+        count.textContent = "";
+        return;
+    }
+
+    banner.classList.remove("hidden");
+    const pct = calculateSwitchStepPct(progress);
+    const phase = (progress.phase || "").toUpperCase();
+    const detailText = progress.detail || progress.message || "Working...";
+    detail.textContent = detailText;
+    title.textContent = progress.message || "Switching Steam accounts";
+
+    if (pct === null) {
+        if (phase === "COMPLETE" || phase === "LAUNCHING") {
+            fill.style.width = "100%";
+        } else {
+            fill.style.width = "0%";
+        }
+        count.textContent = phase || "";
+    } else {
+        const total = Math.max(1, Number(progress.step_total) || 1);
+        const step = Math.min(total, Math.max(0, Number(progress.step) || 0));
+        fill.style.width = `${pct}%`;
+        count.textContent = `Step ${step}/${total}`;
     }
 }
 
@@ -141,7 +202,9 @@ async function fetchStatus() {
 
         const statusPill = el("status-pill");
         const heroState = el("hero-state");
-        const stateLabel = (data.state || (data.running ? "running" : "idle"))
+        const rawState = data.state || (data.running ? "running" : "idle");
+        state.serviceState = rawState;
+        const stateLabel = rawState
             .replace(/_/g, " ")
             .replace(/^(.)/, (m) => m.toUpperCase());
         if (heroState) heroState.textContent = stateLabel;
@@ -169,7 +232,8 @@ async function fetchStatus() {
         setText("kpi-runs", data.game_open_count ?? 0, "0");
 
         if (page === "dashboard") {
-            updateAccountProgress(data.switch_progress, data.accounts || []);
+            updateAccountProgress(data.switch_progress, data.accounts || [], rawState === "waiting");
+            updateSwitchStepBanner(data.switch_progress);
         }
 
         const themeName = cfg.theme || "default";
@@ -278,6 +342,32 @@ function jumpConsoleToBottom() {
     const c = consoleEl();
     if (!c) return;
     c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+}
+
+async function requestAccountSwitch(accountName) {
+    if (!accountName) return;
+    if (state.serviceState !== "waiting") {
+        appendLog({ level: "warning", timestamp: Date.now() / 1000, message: "Can only switch accounts while waiting" });
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/switch-account", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ account: accountName }),
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            appendLog({ level: "error", timestamp: Date.now() / 1000, message: payload.error || "Manual switch failed" });
+            return;
+        }
+        appendLog({ level: "success", timestamp: Date.now() / 1000, message: payload.message || `Switched to ${accountName}` });
+        jumpConsoleToBottom();
+        fetchStatus();
+    } catch (err) {
+        appendLog({ level: "error", timestamp: Date.now() / 1000, message: "Manual switch request failed" });
+    }
 }
 
 async function saveConfig(e) {

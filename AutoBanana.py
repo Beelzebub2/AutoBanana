@@ -11,7 +11,7 @@ import webbrowser
 from collections import deque
 from datetime import datetime, timedelta, UTC
 from pathlib import Path
-from typing import Deque, Dict, List, Optional
+from typing import Deque, Dict, List, Optional, Tuple
 try:  # winreg is Windows-only; fallback to None on Linux/macOS
     import winreg as reg
 except ImportError:
@@ -480,6 +480,9 @@ class AutoBananaService:
                 "phase": "queued",
                 "current_account": None,
                 "message": "Preparing account rotation",
+                "detail": "Gathering Steam accounts",
+                "step": 0,
+                "step_total": 0,
             }
             for index, account in enumerate(self.account_names, start=1):
                 if self.stop_event.is_set():
@@ -489,6 +492,9 @@ class AutoBananaService:
                         "phase": "aborted",
                         "current_account": account,
                         "message": "Stop requested",
+                        "detail": "Stop requested",
+                        "step": self.switch_progress.get("step", 0),
+                        "step_total": self.switch_progress.get("step_total", 0),
                     }
                     break
 
@@ -499,8 +505,11 @@ class AutoBananaService:
                     "phase": "switching",
                     "current_account": account,
                     "message": f"Switching to {account}",
+                    "detail": "Preparing switch",
+                    "step": 0,
+                    "step_total": 0,
                 }
-                switched = self.steam_account_changer.switch_account(account)
+                switched = self.steam_account_changer.switch_account(account, self._switch_step_hook(account))
                 if not switched:
                     self.log_event(f"Skipping launches for account {account} due to switch failure.", "warning")
                     self.switch_progress = {
@@ -509,6 +518,7 @@ class AutoBananaService:
                         "phase": "failed",
                         "current_account": account,
                         "message": f"Switch failed for {account}",
+                        "detail": "Switch failed",
                     }
                     continue
 
@@ -518,6 +528,7 @@ class AutoBananaService:
                     "phase": "launching",
                     "current_account": account,
                     "message": f"Launching games for {account}",
+                    "detail": "Launching configured games",
                 }
                 self.open_games(self.config.get("time_to_wait", 60))
                 self.game_open_count += 1
@@ -527,6 +538,9 @@ class AutoBananaService:
                     "phase": "complete",
                     "current_account": account,
                     "message": f"Finished {account}",
+                    "detail": "Switch complete",
+                    "step": self.switch_progress.get("step_total", 0),
+                    "step_total": self.switch_progress.get("step_total", 0),
                 }
             self.switch_progress = None
         else:
@@ -628,6 +642,66 @@ class AutoBananaService:
                     self.log_event(f"Force closed {proc.info['name']} (PID: {proc.info['pid']})", "warning")
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 continue
+
+    def _switch_step_hook(self, account_name: str):
+        def hook(step_idx: int, total_steps: int, detail: str) -> None:
+            self._update_switch_step(account_name, step_idx, total_steps, detail)
+
+        return hook
+
+    def _update_switch_step(self, account_name: str, step_idx: int, total_steps: int, detail: str) -> None:
+        if not self.switch_progress:
+            self.switch_progress = {}
+        self.switch_progress.setdefault("phase", "switching")
+        self.switch_progress["current_account"] = account_name
+        self.switch_progress["detail"] = detail
+        self.switch_progress["step"] = int(step_idx)
+        self.switch_progress["step_total"] = max(1, int(total_steps))
+
+    def manual_switch_account(self, account_name: Optional[str]) -> Tuple[bool, str]:
+        if not account_name:
+            return False, "Account name is required."
+
+        if self.current_state != "waiting":
+            return False, "Manual switching is only allowed while the scheduler is waiting."
+
+        self.account_names = self.steam_account_changer.get_steam_login_user_names()
+        match = next((name for name in self.account_names if name.lower() == account_name.lower()), None)
+        if not match:
+            return False, f"Account '{account_name}' is not in the remembered list."
+
+        self.log_event(f"Manual switch requested for account: {match}")
+        previous_state = self.current_state
+        self.current_state = "switching"
+        self.switch_progress = {
+            "total": len(self.account_names),
+            "completed": 0,
+            "phase": "manual",
+            "current_account": match,
+            "message": f"Switching to {match}",
+            "detail": "Preparing manual switch",
+            "step": 0,
+            "step_total": 0,
+        }
+
+        try:
+            switched = self.steam_account_changer.switch_account(match, self._switch_step_hook(match))
+        finally:
+            self.current_state = previous_state
+            try:
+                # Ensure loginusers.vdf is restored even if SteamAccountChanger bails early
+                self.steam_account_changer._restore_loginusers_backup()
+            except Exception:
+                self.log_event("Failed to restore Steam account roster after manual switch", "warning")
+
+        if switched:
+            self.switch_progress = None
+            self.log_event(f"Manually switched to {match}", "success")
+            return True, f"Switched to {match}."
+
+        self.switch_progress = None
+        self.log_event(f"Failed manual switch for {match}", "error")
+        return False, f"Failed to switch to {match}."
 
     def ensure_worker(self) -> None:
         if not self.worker_thread or not self.worker_thread.is_alive():
@@ -767,6 +841,18 @@ def api_config():
     payload = request.get_json(force=True, silent=True) or {}
     service.update_config_from_payload(payload)
     return jsonify(service.status_payload())
+
+
+@app.route("/api/switch-account", methods=["POST"])
+def api_switch_account():
+    if not service:
+        return jsonify({"error": "Service not ready"}), 503
+    payload = request.get_json(force=True, silent=True) or {}
+    account = payload.get("account") if isinstance(payload, dict) else None
+    ok, message = service.manual_switch_account(account)
+    if ok:
+        return jsonify({"status": "ok", "message": message})
+    return jsonify({"error": message}), 400
 
 
 @app.route("/static/<path:path>")

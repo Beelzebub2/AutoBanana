@@ -28,6 +28,10 @@ body {
     overflow-x: hidden;
 }
 
+.hidden {
+    display: none !important;
+}
+
 body[data-page="settings"] .layout {
     max-width: 920px;
     margin: 0 auto;
@@ -744,6 +748,56 @@ select:focus {
     mix-blend-mode: screen;
 }
 
+.switch-step-banner {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: rgba(7, 10, 18, 0.8);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+}
+
+.switch-step-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.switch-step-title {
+    font-weight: 600;
+}
+
+.switch-step-count {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.switch-step-detail {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.switch-step-progress {
+    position: relative;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+}
+
+.switch-step-progress-fill {
+    position: absolute;
+    inset: 0;
+    width: 0%;
+    background: linear-gradient(135deg, rgba(246, 195, 68, 0.95), rgba(61, 214, 208, 0.85));
+    transition: width 0.35s ease;
+}
+
 .account-card {
     display: flex;
     flex-direction: column;
@@ -798,12 +852,31 @@ select:focus {
     font-size: 13px;
     color: #dbeafe;
     background: rgba(255, 255, 255, 0.03);
+    font-family: inherit;
+    cursor: default;
+    transition: border 140ms ease, background 140ms ease, transform 140ms ease;
 }
 
 .account-pill.active {
     border-color: transparent;
     background: linear-gradient(135deg, var(--accent), var(--accent-2));
     color: #0a0c12;
+}
+
+.account-pill.clickable {
+    cursor: pointer;
+}
+
+.account-pill.clickable:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
+}
+
+.account-pill.disabled,
+.account-pill:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
 }
 
 .account-pill.muted {
