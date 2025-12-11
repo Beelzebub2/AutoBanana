@@ -610,8 +610,11 @@ class AutoBananaService:
             self.open_ui()
 
         def on_quit(icon, _item):
+            self.log_event("Quit requested from tray", "warning")
             self.stop()
+            icon.visible = False
             icon.stop()
+            os._exit(0)
 
         menu = pystray.Menu(
             pystray.MenuItem("Open UI", on_open),

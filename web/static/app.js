@@ -1,6 +1,9 @@
 const state = {
     latestLogTs: 0,
     offline: false,
+    formEditing: false,
+    formFocusDepth: 0,
+    manualEdit: false,
     themeMap: {
         fire: { start: "#2b1328", end: "#ff6b4a", accent: "#ffcf6f", accent2: "#ff8a5c" },
         ice: { start: "#0d1b2a", end: "#6ea8ff", accent: "#9ee8ff", accent2: "#7dd3fc" },
@@ -15,6 +18,29 @@ const state = {
 const el = (id) => document.getElementById(id);
 const consoleEl = () => el("console");
 const page = document.body.dataset.page || "dashboard";
+const updateFormEditingFlag = () => {
+    state.formEditing = state.manualEdit || state.formFocusDepth > 0;
+};
+
+function beginFormFocus() {
+    state.formFocusDepth += 1;
+    updateFormEditingFlag();
+}
+
+function endFormFocus() {
+    state.formFocusDepth = Math.max(0, state.formFocusDepth - 1);
+    updateFormEditingFlag();
+}
+
+function markManualEdit() {
+    state.manualEdit = true;
+    updateFormEditingFlag();
+}
+
+function clearManualEdit() {
+    state.manualEdit = false;
+    updateFormEditingFlag();
+}
 
 function setBanner(visible, message) {
     const banner = el("conn-banner");
@@ -79,23 +105,27 @@ async function fetchStatus() {
 
         if (statusPill) statusPill.textContent = data.state ? data.state.toUpperCase() : (data.running ? "RUNNING" : "IDLE");
 
-        // Populate form (only on settings page)
+        const themeName = cfg.theme || "default";
+        // Populate form (only on settings page), but avoid overriding while user is editing
         if (page === "settings") {
-            if (el("run-interval")) el("run-interval").value = Math.round((cfg.run_interval_seconds || 0) / 60) || "";
-            if (el("wait-seconds")) el("wait-seconds").value = cfg.time_to_wait || "";
-            if (el("batch-size-input")) el("batch-size-input").value = cfg.batch_size || "";
+            if (!state.formEditing) {
+                if (el("run-interval")) el("run-interval").value = Math.round((cfg.run_interval_seconds || 0) / 60) || "";
+                if (el("wait-seconds")) el("wait-seconds").value = cfg.time_to_wait || "";
+                if (el("batch-size-input")) el("batch-size-input").value = cfg.batch_size || "";
 
-            document.querySelectorAll("#theme-chips .chip").forEach((chip) => {
-                chip.classList.toggle("active", chip.dataset.theme === (cfg.theme || "default"));
-            });
+                document.querySelectorAll("#theme-chips .chip").forEach((chip) => {
+                    chip.classList.toggle("active", chip.dataset.theme === themeName);
+                });
 
-            const startup = document.querySelector("#startup-switch");
-            const switchAccounts = document.querySelector("#switch-accounts-switch");
-            if (startup) startup.classList.toggle("active", Boolean(cfg.run_on_startup));
-            if (switchAccounts) switchAccounts.classList.toggle("active", Boolean(cfg.switch_steam_accounts));
+                const startup = document.querySelector("#startup-switch");
+                const switchAccounts = document.querySelector("#switch-accounts-switch");
+                if (startup) startup.classList.toggle("active", Boolean(cfg.run_on_startup));
+                if (switchAccounts) switchAccounts.classList.toggle("active", Boolean(cfg.switch_steam_accounts));
+                setTheme(themeName);
+            }
+        } else {
+            setTheme(themeName);
         }
-
-        setTheme(cfg.theme || "default");
 
         // Progress bar on dashboard
         if (page === "dashboard") {
@@ -195,6 +225,7 @@ async function saveConfig(e) {
         appendLog({ level: "info", timestamp: Date.now() / 1000, message: "Configuration saved" });
         el("save-status").textContent = "Saved";
         setTimeout(() => (el("save-status").textContent = ""), 2000);
+        clearManualEdit();
         const cfg = data.config || {};
         setTheme(cfg.theme || "default");
     } catch (err) {
@@ -256,10 +287,23 @@ function init() {
                 document.querySelectorAll("#theme-chips .chip").forEach((c) => c.classList.remove("active"));
                 chip.classList.add("active");
                 setTheme(chip.dataset.theme);
+                markManualEdit();
             });
         });
         document.querySelectorAll(".switch").forEach((sw) => {
-            sw.addEventListener("click", () => sw.classList.toggle("active"));
+            sw.addEventListener("click", () => {
+                sw.classList.toggle("active");
+                markManualEdit();
+            });
+        });
+
+        ["run-interval", "wait-seconds", "batch-size-input"].forEach((id) => {
+            const input = el(id);
+            if (input) {
+                input.addEventListener("focus", beginFormFocus);
+                input.addEventListener("blur", endFormFocus);
+                ["input", "change"].forEach((evt) => input.addEventListener(evt, markManualEdit));
+            }
         });
     }
 
