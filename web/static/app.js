@@ -267,6 +267,19 @@ function appendLog(event) {
     if (shouldStick) c.scrollTop = c.scrollHeight;
 }
 
+function clearConsole() {
+    const c = consoleEl();
+    if (c) {
+        c.innerHTML = "";
+    }
+}
+
+function jumpConsoleToBottom() {
+    const c = consoleEl();
+    if (!c) return;
+    c.scrollTo({ top: c.scrollHeight, behavior: "smooth" });
+}
+
 async function saveConfig(e) {
     if (e) e.preventDefault();
     const payload = {
@@ -301,10 +314,7 @@ async function runNow() {
     try {
         await fetch("/api/run", { method: "POST" });
         appendLog({ level: "info", timestamp: Date.now() / 1000, message: "Run queued" });
-        const consoleNode = consoleEl();
-        if (consoleNode) {
-            consoleNode.scrollIntoView({ behavior: "smooth", block: "end" });
-        }
+        jumpConsoleToBottom();
     } catch (err) {
         appendLog({ level: "error", timestamp: Date.now() / 1000, message: "Could not queue run" });
     }
@@ -377,6 +387,8 @@ function init() {
 
     if (el("run-now")) el("run-now").addEventListener("click", runNow);
     if (el("stop")) el("stop").addEventListener("click", stopScheduler);
+    if (el("console-clear")) el("console-clear").addEventListener("click", clearConsole);
+    if (el("console-jump")) el("console-jump").addEventListener("click", jumpConsoleToBottom);
 
     fetchStatus();
     fetchLogs();

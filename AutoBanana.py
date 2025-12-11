@@ -535,6 +535,10 @@ class AutoBananaService:
                 self.game_open_count += 1
 
         if self.stop_event.is_set():
+            try:
+                self.steam_account_changer._restore_loginusers_backup()
+            except Exception:
+                pass
             self.current_state = "stopped"
             return
 
@@ -590,6 +594,10 @@ class AutoBananaService:
         self.switch_progress = None
         self.current_state = "stopped"
         self.log_event("Scheduler stopped", "warning")
+        try:
+            self.steam_account_changer._restore_loginusers_backup()
+        except Exception:
+            pass
 
     def pause_scheduler(self) -> None:
         self.paused = True
@@ -603,6 +611,10 @@ class AutoBananaService:
         self.log_event("Scheduler paused", "warning")
         # Force close any running games
         self._force_close_games()
+        try:
+            self.steam_account_changer._restore_loginusers_backup()
+        except Exception:
+            pass
 
     def _force_close_games(self) -> None:
         """Terminate all currently running games that were opened by AutoBanana."""
