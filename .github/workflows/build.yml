@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python 3.x
         uses: actions/setup-python@v5
         with:
-          python-version: ">=3.7 <3.13"
+          python-version: "3.11"
           cache: 'pip'
       - name: Install dependencies
         run: |
@@ -23,7 +23,12 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
       - name: Build with pyinstaller
-        run: pyinstaller -F -n AutoBanana-win64 AutoBanana.py
+        run: |
+          pyinstaller -F -n AutoBanana-win64 -i banana.ico \
+            --add-data "web;web" \
+            --add-data "config.ini.example;." \
+            --add-data "banana.ico;." \
+            AutoBanana.py
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

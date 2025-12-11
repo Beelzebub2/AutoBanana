@@ -14,14 +14,19 @@ jobs:
         include:
           - os: windows-latest
             TARGET: windows
-            CMD_BUILD: pyinstaller -F --noconsole -n AutoBanana-win64 -i banana.ico AutoBanana.py
+            CMD_BUILD: >-
+              pyinstaller -F --noconsole -n AutoBanana-win64 -i banana.ico
+              --add-data "web;web"
+              --add-data "config.ini.example;."
+              --add-data "banana.ico;."
+              AutoBanana.py
             OUT_FILE_NAME: AutoBanana-win64.exe
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.x
         uses: actions/setup-python@v5
         with:
-          python-version: ">=3.7 <3.13"
+          python-version: "3.11"
           cache: 'pip'
       - name: Install dependencies
         run: |

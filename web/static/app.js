@@ -107,6 +107,8 @@ async function fetchStatus() {
                 let pct = 0;
                 let text = "Idle";
 
+                fill.classList.remove("loading-anim", "waiting-anim");
+
                 if (data.state === "stopped") {
                     pct = 0;
                     text = "Stopped by user";
@@ -117,7 +119,7 @@ async function fetchStatus() {
                         // Active waiting action (e.g., waiting before closing games)
                         pct = Math.min(100, Math.max(0, (wp.elapsed / wp.total) * 100));
                         text = `${wp.label} (${wp.elapsed}s / ${wp.total}s)`;
-                        fill.classList.remove("loading-anim");
+                        fill.classList.add("waiting-anim");
                     } else if (data.state === "running") {
                         pct = 100;
                         text = "Running current cycle";

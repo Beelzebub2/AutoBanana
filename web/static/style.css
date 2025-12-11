@@ -201,6 +201,7 @@ body[data-page="settings"] .layout {
     border-radius: 16px;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
     backdrop-filter: blur(4px);
+    transition: transform 140ms ease, box-shadow 160ms ease, border-color 160ms ease;
     position: relative;
     overflow: hidden;
 }
@@ -252,6 +253,14 @@ body[data-page="settings"] .layout {
     padding: 18px;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.22);
     backdrop-filter: blur(4px);
+    transition: transform 140ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.card:hover,
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .card-header {
@@ -553,6 +562,22 @@ select:focus {
     background: linear-gradient(135deg, rgba(242, 193, 59, 0.95), rgba(52, 199, 193, 0.88));
     box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2);
     transition: width 0.4s ease;
+}
+
+.progress-fill.waiting-anim {
+    animation: progressBreathe 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes progressBreathe {
+    from {
+        filter: saturate(1) brightness(0.96);
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    to {
+        filter: saturate(1.1) brightness(1.04);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+    }
 }
 
 .loading-anim {
