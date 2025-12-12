@@ -11,7 +11,7 @@ import webbrowser
 from collections import deque
 from datetime import datetime, timedelta, UTC
 from pathlib import Path
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Any, Deque, Dict, List, Optional, Tuple
 try:  # winreg is Windows-only; fallback to None on Linux/macOS
     import winreg as reg
 except ImportError:
@@ -71,6 +71,13 @@ class AutoBananaService:
         self.switch_progress: Optional[Dict] = None  # {total, completed, phase, current_account, message}
         self.lock_fd: Optional[int] = None
         self.ui_url = f"http://{UI_HOST}:{UI_PORT}"
+        self._steam_app_cache: Dict[str, Tuple[float, Dict[str, Any]]] = {}
+        self._steam_search_cache: Dict[str, Tuple[float, List[Dict[str, Any]]]] = {}
+        self._steam_cache_ttl = 3600  # seconds
+        self._steam_store_headers = {
+            "User-Agent": "AutoBanana/1.0 (+https://github.com/Beelzebub2/AutoBanana)",
+            "Accept": "application/json",
+        }
 
         self.update_config_file()
         self.apply_startup_setting()
@@ -355,6 +362,107 @@ class AutoBananaService:
                         if file.endswith(".exe") and file not in ("UnityCrashHandler64.exe", "UnityCrashHandler32.exe"):
                             games[file] = install_path
         return games
+
+    # ------------------------------------------------------------
+    # Steam metadata helpers (names, artwork, search)
+    # ------------------------------------------------------------
+    def _cache_is_fresh(self, created_at: float) -> bool:
+        return (time.time() - created_at) < self._steam_cache_ttl
+
+    def _sanitize_app_id(self, app_id: Any) -> Optional[str]:
+        try:
+            return str(int(str(app_id).strip()))
+        except (TypeError, ValueError):
+            return None
+
+    def get_steam_app_info(self, app_id: Any) -> Optional[Dict[str, Any]]:
+        app_key = self._sanitize_app_id(app_id)
+        if not app_key:
+            return None
+
+        cached = self._steam_app_cache.get(app_key)
+        if cached and self._cache_is_fresh(cached[0]):
+            return cached[1]
+
+        try:
+            response = requests.get(
+                "https://store.steampowered.com/api/appdetails",
+                params={"appids": app_key, "cc": "us", "l": "en"},
+                headers=self._steam_store_headers,
+                timeout=6,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:
+            self.log_event(f"Steam metadata lookup failed for {app_key}: {exc}", "warning")
+            return None
+
+        entry = payload.get(app_key)
+        data = entry.get("data") if isinstance(entry, dict) and entry.get("success") else None
+        if not data:
+            return None
+
+        info = {
+            "app_id": app_key,
+            "name": data.get("name") or f"App {app_key}",
+            "header_image": data.get("header_image"),
+            "capsule_image": data.get("capsule_image"),
+            "icon": data.get("capsule_image") or data.get("header_image"),
+            "short_description": data.get("short_description"),
+        }
+        self._steam_app_cache[app_key] = (time.time(), info)
+        return info
+
+    def get_steam_app_infos(self, app_ids: List[Any]) -> Dict[str, Dict[str, Any]]:
+        details: Dict[str, Dict[str, Any]] = {}
+        for value in app_ids:
+            info = self.get_steam_app_info(value)
+            if info:
+                details[info["app_id"]] = info
+        return details
+
+    def search_steam_apps(self, query: str) -> List[Dict[str, Any]]:
+        term = (query or "").strip()
+        if len(term) < 2:
+            return []
+
+        cache_key = term.lower()
+        cached = self._steam_search_cache.get(cache_key)
+        if cached and self._cache_is_fresh(cached[0]):
+            return cached[1]
+
+        try:
+            response = requests.get(
+                "https://store.steampowered.com/api/storesearch/",
+                params={"term": term, "cc": "us", "l": "en"},
+                headers=self._steam_store_headers,
+                timeout=6,
+            )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception as exc:
+            self.log_event(f"Steam search failed for '{term}': {exc}", "warning")
+            return []
+
+        items = payload.get("items") if isinstance(payload, dict) else None
+        results: List[Dict[str, Any]] = []
+        if isinstance(items, list):
+            for item in items[:12]:
+                app_key = self._sanitize_app_id(item.get("id")) if isinstance(item, dict) else None
+                if not app_key:
+                    continue
+                results.append(
+                    {
+                        "app_id": app_key,
+                        "name": item.get("name") or f"App {app_key}",
+                        "image": item.get("tiny_image") or item.get("header_image"),
+                        "price": item.get("price_display"),
+                        "released": item.get("release_date"),
+                    }
+                )
+
+        self._steam_search_cache[cache_key] = (time.time(), results)
+        return results
 
     def update_config_file(self) -> None:
         if not self.steam_install_location:
@@ -873,6 +981,30 @@ def api_config():
     payload = request.get_json(force=True, silent=True) or {}
     service.update_config_from_payload(payload)
     return jsonify(service.status_payload())
+
+
+@app.route("/api/steam/apps")
+def api_steam_apps():
+    if not service:
+        return jsonify({"error": "Service not ready"}), 503
+    ids_param = request.args.get("ids", "")
+    ids: List[str] = []
+    if ids_param:
+        ids.extend([part.strip() for part in ids_param.split(",") if part.strip()])
+    ids.extend([value.strip() for value in request.args.getlist("id") if value.strip()])
+    if not ids:
+        return jsonify({"apps": {}})
+    details = service.get_steam_app_infos(ids)
+    return jsonify({"apps": details})
+
+
+@app.route("/api/steam/search")
+def api_steam_search():
+    if not service:
+        return jsonify({"error": "Service not ready"}), 503
+    query = request.args.get("q", "")
+    results = service.search_steam_apps(query)
+    return jsonify({"results": results})
 
 
 @app.route("/api/switch-account", methods=["POST"])

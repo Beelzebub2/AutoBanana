@@ -455,11 +455,12 @@ select:focus {
 }
 
 .token-input {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    align-items: center;
-    padding: 6px 10px;
+    align-items: flex-start;
+    padding: 6px 10px 10px;
     border-radius: 12px;
     border: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.02);
@@ -497,6 +498,40 @@ select:focus {
     letter-spacing: 0.2px;
 }
 
+.token-chip.preview {
+    border-radius: 14px;
+    padding: 6px 12px 6px 6px;
+    background: rgba(11, 19, 32, 0.65);
+    border-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.token-chip img {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+}
+
+.token-chip .token-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+}
+
+.token-chip .token-title {
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.3;
+}
+
+.token-chip .token-id {
+    font-size: 11px;
+    color: var(--muted);
+}
+
 .token-chip.muted {
     background: rgba(255, 255, 255, 0.02);
     border-color: rgba(255, 255, 255, 0.15);
@@ -516,6 +551,90 @@ select:focus {
 
 .token-chip button:hover {
     color: #fff;
+}
+
+.token-suggestions {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: rgba(9, 13, 22, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    z-index: 20;
+    animation: fadeUp 220ms ease;
+}
+
+.token-suggestions.loading::after {
+    content: "Searching Steam...";
+    display: block;
+    padding: 10px;
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.token-suggestion {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 140ms ease, transform 140ms ease;
+}
+
+.token-suggestion:hover,
+.token-suggestion.active {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateX(2px);
+}
+
+.token-suggestion img {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    object-fit: cover;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.token-suggestion .suggestion-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.token-suggestion .suggestion-title {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.token-suggestion .suggestion-meta {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+.token-suggestion .add-label {
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .toggle-row {
