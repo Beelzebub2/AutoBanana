@@ -418,6 +418,19 @@ h2 {
     gap: 6px;
 }
 
+.field-hint {
+    font-size: 13px;
+    color: var(--muted);
+}
+
+.field-hint[data-tone="error"] {
+    color: var(--error);
+}
+
+.field-hint[data-tone="warning"] {
+    color: var(--warning);
+}
+
 label {
     font-weight: 600;
     color: #d9e4ff;
@@ -439,6 +452,70 @@ input:focus,
 select:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(246, 195, 68, 0.15);
+}
+
+.token-input {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    padding: 6px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.token-input input {
+    flex: 1 1 180px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    padding: 6px 0;
+    font-size: 14px;
+    min-width: 140px;
+}
+
+.token-input input:focus {
+    outline: none;
+}
+
+.token-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.token-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(61, 214, 208, 0.12);
+    border: 1px solid rgba(61, 214, 208, 0.35);
+    font-size: 13px;
+    letter-spacing: 0.2px;
+}
+
+.token-chip.muted {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: var(--muted);
+    pointer-events: none;
+}
+
+.token-chip button {
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    line-height: 1;
+}
+
+.token-chip button:hover {
+    color: #fff;
 }
 
 .toggle-row {

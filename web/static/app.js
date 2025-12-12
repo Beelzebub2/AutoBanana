@@ -5,6 +5,7 @@ const state = {
     formFocusDepth: 0,
     manualEdit: false,
     serviceState: "idle",
+    gameIds: [],
     themeMap: {
         fire: { start: "#2b1328", end: "#ff6b4a", accent: "#ffcf6f", accent2: "#ff8a5c" },
         ice: { start: "#0d1b2a", end: "#6ea8ff", accent: "#9ee8ff", accent2: "#7dd3fc" },
@@ -15,6 +16,8 @@ const state = {
         default: { start: "#1c2541", end: "#0b132b", accent: "#f6c344", accent2: "#3dd6d0" },
     },
 };
+
+const GAME_HINT_DEFAULT = "Press Enter or Space to add an ID. Paste Steam store links or steam:// URLs.";
 
 const el = (id) => document.getElementById(id);
 const consoleEl = () => el("console");
@@ -83,6 +86,150 @@ function updateAccountProgress(progress, accounts, canSwitch) {
         chip.textContent = "No remembered accounts";
         list.appendChild(chip);
     }
+}
+
+function normalizeGameList(list) {
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    const result = [];
+    list.forEach((entry) => {
+        const value = String(entry || "").trim();
+        if (value && !seen.has(value)) {
+            seen.add(value);
+            result.push(value);
+        }
+    });
+    return result;
+}
+
+function setGameIds(ids) {
+    state.gameIds = normalizeGameList(ids);
+    renderGameTokens();
+}
+
+function renderGameTokens() {
+    const listEl = el("game-token-list");
+    const input = el("game-token-input");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    if (!state.gameIds.length) {
+        const placeholder = document.createElement("span");
+        placeholder.className = "token-chip muted";
+        placeholder.textContent = "No games added yet";
+        listEl.appendChild(placeholder);
+    } else {
+        state.gameIds.forEach((id) => {
+            const chip = document.createElement("span");
+            chip.className = "token-chip";
+            chip.textContent = id;
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button";
+            removeBtn.setAttribute("aria-label", `Remove ${id}`);
+            removeBtn.innerHTML = "&times;";
+            removeBtn.addEventListener("click", () => removeGameId(id));
+            chip.appendChild(removeBtn);
+            listEl.appendChild(chip);
+        });
+    }
+
+    if (input) {
+        input.placeholder = state.gameIds.length ? "Add another ID or link" : "Enter app ID or Steam store link";
+    }
+}
+
+function setGameTokenHint(message = GAME_HINT_DEFAULT, tone = "muted") {
+    const hint = el("game-token-hint");
+    if (!hint) return;
+    hint.textContent = message;
+    hint.dataset.tone = tone;
+}
+
+function extractGameId(raw) {
+    const value = (raw || "").trim();
+    if (!value) return null;
+
+    let match = value.match(/app\/(\d+)/i);
+    if (match) return match[1];
+
+    match = value.match(/steam:\/\/(?:rungameid|run|install)\/(\d+)/i);
+    if (match) return match[1];
+
+    match = value.match(/run(?:gameid)?\/(\d+)/i);
+    if (match) return match[1];
+
+    match = value.match(/(\d{3,})/);
+    if (match) return match[1];
+
+    return null;
+}
+
+function addGameIdFromValue(raw) {
+    const id = extractGameId(raw);
+    if (!id) {
+        setGameTokenHint("Could not find an app ID in that entry.", "error");
+        return false;
+    }
+    if (state.gameIds.includes(id)) {
+        setGameTokenHint("App ID already added.", "warning");
+        return false;
+    }
+    state.gameIds.push(id);
+    renderGameTokens();
+    setGameTokenHint();
+    markManualEdit();
+    return true;
+}
+
+function removeGameId(id) {
+    state.gameIds = state.gameIds.filter((entry) => entry !== id);
+    renderGameTokens();
+    setGameTokenHint();
+    markManualEdit();
+}
+
+function commitGameTokenInput() {
+    const input = el("game-token-input");
+    if (!input) return;
+    const value = input.value.trim();
+    if (!value) {
+        setGameTokenHint();
+        return;
+    }
+    if (addGameIdFromValue(value)) {
+        input.value = "";
+    }
+}
+
+function handleGameTokenPaste(event) {
+    event.preventDefault();
+    const text = event.clipboardData?.getData("text") || "";
+    text
+        .split(/[\s,]+/)
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
+        .forEach((chunk) => addGameIdFromValue(chunk));
+    const input = el("game-token-input");
+    if (input) input.value = "";
+}
+
+function setupGameTokenInput() {
+    const input = el("game-token-input");
+    if (!input) return;
+    setGameTokenHint();
+    renderGameTokens();
+    input.addEventListener("focus", beginFormFocus);
+    input.addEventListener("blur", () => {
+        commitGameTokenInput();
+        endFormFocus();
+    });
+    input.addEventListener("keydown", (event) => {
+        if (["Enter", " ", ","].includes(event.key)) {
+            event.preventDefault();
+            commitGameTokenInput();
+        }
+    });
+    input.addEventListener("paste", handleGameTokenPaste);
 }
 
 function calculateSwitchStepPct(progress) {
@@ -250,6 +397,8 @@ async function fetchStatus() {
             const switchAccounts = document.querySelector("#switch-accounts-switch");
             if (startup) startup.classList.toggle("active", Boolean(cfg.run_on_startup));
             if (switchAccounts) switchAccounts.classList.toggle("active", Boolean(cfg.switch_steam_accounts));
+            setGameIds(cfg.games || []);
+            setGameTokenHint();
             setTheme(themeName);
         } else {
             setTheme(themeName);
@@ -379,6 +528,7 @@ async function saveConfig(e) {
         run_on_startup: document.querySelector("#startup-switch")?.classList.contains("active") || false,
         switch_steam_accounts: document.querySelector("#switch-accounts-switch")?.classList.contains("active") || false,
         theme: document.querySelector("#theme-chips .chip.active")?.dataset.theme || "default",
+        games: state.gameIds,
     };
 
     try {
@@ -395,6 +545,9 @@ async function saveConfig(e) {
         clearManualEdit();
         const cfg = data.config || {};
         setTheme(cfg.theme || "default");
+        if (page === "settings") {
+            setGameIds(cfg.games || []);
+        }
     } catch (err) {
         appendLog({ level: "error", timestamp: Date.now() / 1000, message: err.message });
     }
@@ -473,6 +626,8 @@ function init() {
                 ["input", "change"].forEach((evt) => input.addEventListener(evt, markManualEdit));
             }
         });
+
+        setupGameTokenInput();
     }
 
     if (el("run-now")) el("run-now").addEventListener("click", runNow);

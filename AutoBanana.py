@@ -188,12 +188,16 @@ class AutoBananaService:
     # Environment setup
     # ------------------------------------------------------------
     def acquire_lock(self) -> bool:
-        try:
-            self.lock_fd = os.open(str(LOCK_PATH), os.O_CREAT | os.O_EXCL | os.O_RDWR)
-            atexit.register(self.release_lock)
-            return True
-        except FileExistsError:
-            return False
+        pid = os.getpid()
+        while True:
+            try:
+                self.lock_fd = os.open(str(LOCK_PATH), os.O_CREAT | os.O_EXCL | os.O_RDWR)
+                os.write(self.lock_fd, f"{pid}\n".encode("ascii"))
+                atexit.register(self.release_lock)
+                return True
+            except FileExistsError:
+                if not self._clear_stale_lock():
+                    return False
 
     def release_lock(self) -> None:
         if self.lock_fd:
@@ -207,6 +211,34 @@ class AutoBananaService:
                 LOCK_PATH.unlink()
             except OSError:
                 pass
+
+    def _clear_stale_lock(self) -> bool:
+        if not LOCK_PATH.exists():
+            return False
+
+        pid: Optional[int] = None
+        try:
+            pid_text = LOCK_PATH.read_text(encoding="utf-8").strip()
+            if pid_text:
+                pid = int(pid_text)
+        except Exception:
+            pid = None
+
+        if pid and psutil.pid_exists(pid):
+            try:
+                proc = psutil.Process(pid)
+                if proc.is_running():
+                    return False
+            except psutil.Error:
+                pass
+
+        try:
+            LOCK_PATH.unlink()
+            self.log_event("Removed stale AutoBanana lock", "warning")
+            return True
+        except OSError as exc:
+            self.log_event(f"Failed removing stale lock: {exc}", "warning")
+            return False
 
     def apply_startup_setting(self) -> None:
         if not self.is_windows or reg is None:
