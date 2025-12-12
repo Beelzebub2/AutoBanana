@@ -3,6 +3,8 @@ import configparser
 import itertools
 import logging
 import os
+import shutil
+import signal
 import sys
 import threading
 import time
@@ -55,6 +57,9 @@ class AutoBananaService:
         self.is_windows = os.name == "nt"
         self.user_id_file = APP_DIR / "user_id.txt"
         self.usage_logged_file = APP_DIR / "usage_logged.txt"
+        self.config_path = self._resolve_config_path()
+        self._bootstrap_config_storage()
+        logger.info(f"Using config file at {self.config_path}")
         self.config = self.read_config()
         self.game_open_count = 0
         self.account_names: List[str] = []
@@ -68,7 +73,7 @@ class AutoBananaService:
         self.worker_thread: Optional[threading.Thread] = None
         self.next_run_at: Optional[datetime] = None
         self.last_run_at: Optional[datetime] = None
-        self.wait_progress: Optional[Dict] = None  # {elapsed, total, label}
+        self.wait_progress: Optional[Dict] = None  # {elapsed, remaining, total, label}
         self.switch_progress: Optional[Dict] = None  # {total, completed, phase, current_account, message}
         self.lock_fd: Optional[int] = None
         self.ui_url = f"http://{UI_HOST}:{UI_PORT}"
@@ -87,9 +92,76 @@ class AutoBananaService:
     # ------------------------------------------------------------
     # Configuration
     # ------------------------------------------------------------
+    def _resolve_config_path(self) -> Path:
+        """Place config under the user's roaming config directory."""
+        if self.is_windows:
+            appdata = os.environ.get("APPDATA")
+            base_dir = Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
+        else:
+            xdg_home = os.environ.get("XDG_CONFIG_HOME")
+            base_dir = Path(xdg_home) if xdg_home else Path.home() / ".config"
+        return base_dir / "AutoBanana" / "config.ini"
+
+    def _ensure_config_parent(self) -> None:
+        try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception as exc:
+            logger.error(f"Failed to create config directory {self.config_path.parent}: {exc}")
+
+    def _legacy_config_path(self) -> Path:
+        return APP_DIR / "config.ini"
+
+    def _example_config_path(self) -> Path:
+        return APP_DIR / "config.ini.example"
+
+    def _is_file_newer(self, candidate: Path, reference: Path) -> bool:
+        try:
+            if not reference.exists():
+                return True
+            return candidate.stat().st_mtime > reference.stat().st_mtime + 0.5
+        except FileNotFoundError:
+            return True
+        except Exception:
+            return False
+
+    def _copy_config_file(self, src: Path, dst: Path, reason: str) -> None:
+        if not src.exists() or src.resolve() == dst.resolve():
+            return
+        self._ensure_config_parent()
+        try:
+            shutil.copy2(src, dst)
+            logger.info(f"{reason}: {dst}")
+        except Exception as exc:
+            logger.warning(f"Unable to copy config from {src} to {dst}: {exc}")
+
+    def _mirror_config_to_legacy(self) -> None:
+        legacy_path = self._legacy_config_path()
+        if not self.config_path.exists():
+            return
+        try:
+            shutil.copy2(self.config_path, legacy_path)
+        except Exception as exc:
+            logger.debug(f"Unable to mirror config to application folder: {exc}")
+
+    def _bootstrap_config_storage(self) -> None:
+        """Create the config directory and migrate any legacy files."""
+        self._ensure_config_parent()
+        legacy_path = self._legacy_config_path()
+        example_path = self._example_config_path()
+        config_exists = self.config_path.exists()
+
+        if legacy_path.exists() and (not config_exists or self._is_file_newer(legacy_path, self.config_path)):
+            self._copy_config_file(legacy_path, self.config_path, "Loaded config from application folder")
+            config_exists = self.config_path.exists()
+
+        if not config_exists and example_path.exists():
+            self._copy_config_file(example_path, self.config_path, "Seeded default config")
+
     def read_config(self) -> Dict:
         config = configparser.ConfigParser()
-        config.read("config.ini")
+        config_path_str = str(self.config_path)
+        if os.path.exists(config_path_str):
+            config.read(config_path_str, encoding="utf-8")
 
         defaults = {
             "run_on_startup": False,
@@ -129,8 +201,10 @@ class AutoBananaService:
                 "theme": cfg["theme"],
                 "switch_steam_accounts": "yes" if cfg["switch_steam_accounts"] else "no",
             }
-            with open("config.ini", "w", encoding="utf-8") as configfile:
+            self._ensure_config_parent()
+            with open(self.config_path, "w", encoding="utf-8") as configfile:
                 config.write(configfile)
+            self._mirror_config_to_legacy()
 
         return cfg
 
@@ -145,8 +219,10 @@ class AutoBananaService:
             "theme": self.config.get("theme", "fire"),
             "switch_steam_accounts": "yes" if self.config.get("switch_steam_accounts") else "no",
         }
-        with open("config.ini", "w", encoding="utf-8") as configfile:
+        self._ensure_config_parent()
+        with open(self.config_path, "w", encoding="utf-8") as configfile:
             cfg.write(configfile)
+        self._mirror_config_to_legacy()
 
     def update_config_from_payload(self, payload: Dict) -> None:
         dirty = False
@@ -469,13 +545,9 @@ class AutoBananaService:
         if not self.steam_install_location:
             return
 
-        try:
-            with open("config.ini", "r", encoding="utf-8") as configfile:
-                lines = configfile.readlines()
-        except FileNotFoundError:
-            return
-
         games = self.config.get("games", [])
+        if not games:
+            return
         installed_games = []
         removed_games = []
 
@@ -485,19 +557,11 @@ class AutoBananaService:
             else:
                 removed_games.append(game)
 
-        new_games_line = f"games = {','.join(installed_games)}\n"
-
-        with open("config.ini", "w", encoding="utf-8") as configfile:
-            for line in lines:
-                if line.startswith("games ="):
-                    configfile.write(new_games_line)
-                else:
-                    configfile.write(line)
-
         if removed_games:
             message = "Removed non-installed game IDs from config: " + ", ".join(removed_games)
             self.log_event(message, "warning")
             self.config["games"] = installed_games
+            self.write_config()
 
     # ------------------------------------------------------------
     # Core automation
@@ -587,7 +651,7 @@ class AutoBananaService:
     def wait_with_progress(self, duration: int, label: str = "Waiting") -> None:
         duration = max(0, int(duration))
         start = time.time()
-        self.wait_progress = {"elapsed": 0, "total": duration, "label": label}
+        self.wait_progress = {"elapsed": 0, "remaining": duration, "total": duration, "label": label}
         interrupted = False
         try:
             while True:
@@ -595,7 +659,9 @@ class AutoBananaService:
                     interrupted = True
                     break
                 elapsed = time.time() - start
-                self.wait_progress = {"elapsed": int(elapsed), "total": duration, "label": label}
+                elapsed_int = max(0, int(elapsed))
+                remaining = max(0, duration - elapsed_int)
+                self.wait_progress = {"elapsed": elapsed_int, "remaining": remaining, "total": duration, "label": label}
                 if elapsed >= duration:
                     break
                 time.sleep(0.2)
@@ -603,6 +669,13 @@ class AutoBananaService:
             self.wait_progress = None
             if interrupted:
                 self.log_event(f"Stop requested during '{label}'. Exiting early.", "warning")
+
+    def initiate_shutdown(self, reason: str = "signal") -> None:
+        if self.stop_event.is_set():
+            return
+        self.log_event(f"{reason} received; initiating graceful shutdown", "warning")
+        self.stop_event.set()
+        self.manual_trigger.set()
 
     def run_once(self) -> None:
         self.current_state = "running"
@@ -921,6 +994,7 @@ class AutoBananaService:
 
 
 service: Optional[AutoBananaService] = None
+shutdown_event = threading.Event()
 app = Flask(__name__, static_folder="web/static", template_folder="web/templates")
 
 
@@ -1042,6 +1116,19 @@ def existing_instance_running() -> bool:
         return False
 
 
+def register_signal_handlers():
+    def _handle(signum, _frame):
+        name = signal.Signals(signum).name if hasattr(signal, "Signals") else f"SIG{signum}"
+        print(f"\n{name} received. Stopping AutoBanana...")
+        shutdown_event.set()
+        if service:
+            service.initiate_shutdown(name)
+
+    for sig in (getattr(signal, "SIGINT", None), getattr(signal, "SIGTERM", None)):
+        if sig is not None:
+            signal.signal(sig, _handle)
+
+
 def main():
     global service
 
@@ -1057,6 +1144,7 @@ def main():
         return
 
     service = svc
+    register_signal_handlers()
     service.start()
 
     flask_thread = threading.Thread(target=start_flask, daemon=True)
@@ -1066,10 +1154,12 @@ def main():
     service.open_ui()
 
     try:
-        while flask_thread.is_alive():
+        while flask_thread.is_alive() and not shutdown_event.is_set():
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Shutting down...")
+        print("\nKeyboardInterrupt received. Stopping AutoBanana...")
+        shutdown_event.set()
+        service.initiate_shutdown("KeyboardInterrupt")
     finally:
         service.stop()
 

@@ -632,10 +632,31 @@ function relative(iso) {
     if (!iso) return "";
     const target = new Date(iso).getTime();
     const diff = target - Date.now();
-    const abs = Math.abs(diff);
-    const mins = Math.round(abs / 60000);
-    if (mins === 0) return diff >= 0 ? "now" : "just now";
-    return diff > 0 ? `in ${mins} min` : `${mins} min ago`;
+    const absSeconds = Math.max(0, Math.round(Math.abs(diff) / 1000));
+    if (absSeconds === 0) return diff >= 0 ? "now" : "just now";
+    const formatted = formatDurationVerbose(absSeconds);
+    return diff > 0 ? `in ${formatted}` : `${formatted} ago`;
+}
+
+function formatDurationHMS(seconds) {
+    const total = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+    const pad = (value) => String(value).padStart(2, "0");
+    return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`;
+}
+
+function formatDurationVerbose(seconds) {
+    const total = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const secs = total % 60;
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
+    parts.push(`${secs}s`);
+    return parts.join(" ");
 }
 
 async function fetchStatus() {
@@ -727,8 +748,12 @@ async function fetchStatus() {
                     const wp = data.wait_progress;
                     if (wp && wp.total > 0) {
                         // Active waiting action (e.g., waiting before closing games)
-                        pct = Math.min(100, Math.max(0, (wp.elapsed / wp.total) * 100));
-                        text = `${wp.label} (${wp.elapsed}s / ${wp.total}s)`;
+                        const total = Number(wp.total) || 0;
+                        const elapsed = Number(wp.elapsed) || 0;
+                        const remaining = typeof wp.remaining === "number" ? Math.max(0, wp.remaining) : Math.max(0, total - elapsed);
+                        const denom = total || (elapsed + remaining) || 1;
+                        pct = Math.min(100, Math.max(0, ((denom - remaining) / denom) * 100));
+                        text = `${wp.label} (${formatDurationHMS(remaining)} remaining)`;
                         fill.classList.add("waiting-anim");
                     } else if (data.state === "running") {
                         pct = 100;

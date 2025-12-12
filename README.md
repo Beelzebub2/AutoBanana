@@ -35,7 +35,7 @@ Simply download and run `AutoBanana-win64.exe`
 - **Extract the contents of the zip file**
 - **Install python**  Make sure to add python to PATH it's an option when installing!
 - **Run setup.bat**
-- **Insert game ID's into the config file separated by a comma ','** (you can find the ids on the game properties under the updates page on library or steam shop link)
+- **Insert game ID's into the config file separated by a comma ','** (you can find the ids on the game properties under the updates page on library or steam shop link). The config now lives under `%APPDATA%\AutoBanana\config.ini` on Windows or `~/.config/AutoBanana/config.ini` on Linux/macOS. A synced copy is kept alongside `AutoBanana.exe` for convenience—edit whichever file you prefer and AutoBanana will migrate the newer version automatically on the next launch.
 
 #### Linux / Ubuntu quick start
 
