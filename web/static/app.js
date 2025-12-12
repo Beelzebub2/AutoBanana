@@ -179,7 +179,7 @@ function renderGameTokens() {
     }
 
     if (input) {
-        input.placeholder = state.gameIds.length ? "Add another ID or link" : "Enter app ID or Steam store link";
+        input.placeholder = state.gameIds.length ? "Add another ID or link or search by Name" : "Enter app ID or Steam store link";
     }
 }
 

@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 from typing import Callable, Dict, Optional
 
@@ -15,6 +16,10 @@ import vdf
 logger = logging.getLogger("main")
 
 
+class SteamAccountChangerError(RuntimeError):
+    """Raised when the Steam account switcher encounters a fatal issue."""
+
+
 class SteamAccountChanger:
     def __init__(self):
         """Manage Steam account switching across Windows and Linux."""
@@ -23,6 +28,21 @@ class SteamAccountChanger:
         self.loginusers_path = self._build_loginusers_path()
         self.steam_exe = self._detect_steam_binary()
         self._last_backup: Optional[Dict] = None
+        self._shadow_backup_path = f"{self.loginusers_path}.autobanana" if self.loginusers_path else None
+        self._steam_ready_timeout = 45  # seconds to wait for Steam to consume loginusers
+        self._poll_interval = 1.25
+        self._shadow_backup_active = False
+        self._cleanup_orphaned_shadow_backup()  # Ensure cleanup is called during initialization
+
+    def _cleanup_orphaned_shadow_backup(self) -> None:
+        if not self.loginusers_path or not self._shadow_backup_path:
+            return
+        if os.path.exists(self._shadow_backup_path) and not os.path.exists(self.loginusers_path):
+            try:
+                shutil.move(self._shadow_backup_path, self.loginusers_path)
+                logger.warning("Recovered orphaned loginusers.vdf from previous AutoBanana run.")
+            except Exception as exc:
+                logger.error(f"Unable to recover loginusers backup: {exc}")
 
     def _detect_steam_binary(self) -> Optional[str]:
         if not self.steam_path:
@@ -55,12 +75,25 @@ class SteamAccountChanger:
             except Exception as exc:
                 logger.error(f"Failed to read Steam path: {exc}")
 
-        for path in (
-            os.environ.get("STEAM_PATH"),
-            os.path.expanduser("~/.local/share/Steam"),
-            os.path.expanduser("~/.steam/steam"),
-            os.path.expanduser("~/.steam/root"),
-        ):
+        potential_paths = [os.environ.get("STEAM_PATH")]
+        if self.is_windows:
+            program_files_x86 = os.environ.get("PROGRAMFILES(X86)")
+            program_files = os.environ.get("PROGRAMFILES")
+            potential_paths.extend(
+                [
+                    os.path.join(program_files_x86, "Steam") if program_files_x86 else None,
+                    os.path.join(program_files, "Steam") if program_files else None,
+                ]
+            )
+        potential_paths.extend(
+            [
+                os.path.expanduser("~/.local/share/Steam"),
+                os.path.expanduser("~/.steam/steam"),
+                os.path.expanduser("~/.steam/root"),
+            ]
+        )
+
+        for path in potential_paths:
             if path and os.path.exists(path):
                 return path
 
@@ -91,19 +124,30 @@ class SteamAccountChanger:
             return False
 
         try:
-            with open(self.loginusers_path, "w", encoding="utf-8") as vdf_file:
-                vdf.dump(loginusers, vdf_file)
+            directory = os.path.dirname(self.loginusers_path)
+            temp_fd, temp_path = tempfile.mkstemp(prefix="autobanana_loginusers_", suffix=".vdf", dir=directory)
+            try:
+                with os.fdopen(temp_fd, "w", encoding="utf-8") as vdf_file:
+                    vdf.dump(loginusers, vdf_file)
+                os.replace(temp_path, self.loginusers_path)
+            finally:
+                if os.path.exists(temp_path):
+                    os.unlink(temp_path)
             return True
         except Exception as exc:
             logger.error(f"Unable to write loginusers.vdf: {exc}")
             return False
 
     def _backup_loginusers(self, loginusers: Dict):
-        """Keep an in-memory copy and refresh the on-disk .bak for restores."""
+        """Keep an in-memory copy and refresh on-disk backups for restores."""
         self._last_backup = copy.deepcopy(loginusers) if loginusers else None
         if self.loginusers_path and os.path.exists(self.loginusers_path):
             try:
-                shutil.copy(self.loginusers_path, self.loginusers_path + ".bak")
+                bak_path = self.loginusers_path + ".bak"
+                shutil.copy2(self.loginusers_path, bak_path)
+                if self._shadow_backup_path:
+                    shutil.copy2(bak_path, self._shadow_backup_path)
+                    self._shadow_backup_active = True
             except Exception as exc:
                 logger.warning(f"Unable to snapshot loginusers.vdf: {exc}")
 
@@ -117,13 +161,27 @@ class SteamAccountChanger:
             if self._write_loginusers(self._last_backup):
                 self._last_backup = None
                 return
-        bak_path = f"{self.loginusers_path}.bak" if self.loginusers_path else None
-        if bak_path and os.path.exists(bak_path):
+        candidate_paths = []
+        if self._shadow_backup_path and os.path.exists(self._shadow_backup_path):
+            candidate_paths.append(self._shadow_backup_path)
+        if self.loginusers_path:
+            bak_path = f"{self.loginusers_path}.bak"
+            if os.path.exists(bak_path):
+                candidate_paths.append(bak_path)
+
+        for backup_path in candidate_paths:
             try:
-                shutil.copy(bak_path, self.loginusers_path)
+                shutil.copy2(backup_path, self.loginusers_path)
                 self._last_backup = None
+                self._shadow_backup_active = False
+                if backup_path == self._shadow_backup_path:
+                    try:
+                        os.remove(self._shadow_backup_path)
+                    except OSError:
+                        pass
+                return
             except Exception as exc:
-                logger.error(f"Unable to restore Steam account list backup: {exc}")
+                logger.error(f"Unable to restore Steam account list backup from {backup_path}: {exc}")
 
     def _notify_progress(self, progress_hook: Optional[Callable[[int, int, str], None]], step: int, total: int, message: str) -> None:
         if not progress_hook:
@@ -132,6 +190,33 @@ class SteamAccountChanger:
             progress_hook(step, total, message)
         except Exception:
             pass
+
+    def _get_mtime(self, path: Optional[str]) -> Optional[float]:
+        if not path:
+            return None
+        try:
+            return os.path.getmtime(path)
+        except OSError:
+            return None
+
+    def _wait_for_loginusers_activity(self, timeout: Optional[int] = None) -> bool:
+        """Keep the single-user file in place until Steam consumes it."""
+        if not self.loginusers_path:
+            time.sleep(5)
+            return True
+
+        max_wait = timeout or self._steam_ready_timeout
+        deadline = time.monotonic() + max_wait
+        baseline = self._get_mtime(self.loginusers_path)
+
+        while time.monotonic() < deadline:
+            current = self._get_mtime(self.loginusers_path)
+            if current and baseline and current != baseline:
+                return True
+            if current and baseline is None:
+                return True
+            time.sleep(self._poll_interval)
+        return False
 
     def _set_autologin_registry(self, username: str) -> bool:
         if not self.is_windows or reg is None:
@@ -211,10 +296,14 @@ class SteamAccountChanger:
             logger.error("No username provided to switch_account.")
             return False
 
-        total_steps = 6
+        total_steps = 7
         self._notify_progress(progress_hook, 1, total_steps, f"Locating account '{username}'")
         loginusers_vdf = self._load_loginusers()
         users = loginusers_vdf.get("users", {}) if loginusers_vdf else {}
+
+        if not users:
+            logger.error("loginusers.vdf did not contain any cached accounts.")
+            return False
 
         self._backup_loginusers(loginusers_vdf)
 
@@ -226,45 +315,54 @@ class SteamAccountChanger:
 
         if not target_user_id:
             logger.error(f"Account '{username}' not found in loginusers.vdf")
-            return False
-
-        self.kill_steam()
-        self._notify_progress(progress_hook, 2, total_steps, "Stopping running Steam processes")
-
-        for user_id, user_data in users.items():
-            is_target = user_id == target_user_id
-            user_data["MostRecent"] = "1" if is_target else "0"
-            user_data["RememberPassword"] = "1"
-            user_data["AllowAutoLogin"] = "1" if is_target else user_data.get("AllowAutoLogin", "1")
-
-        target_user = users.get(target_user_id, {})
-        users[target_user_id] = target_user
-
-        single_user_written = False
-
-        if not self._write_single_user_loginusers(target_user_id, target_user):
             self._restore_loginusers_backup()
             return False
-        single_user_written = True
-        self._notify_progress(progress_hook, 3, total_steps, f"Writing single-user login file for {username}")
 
-        if not self._set_autologin_registry(username):
-            if single_user_written:
-                self._restore_loginusers_backup()
+        single_user_on_disk = False
+
+        try:
+            self.kill_steam()
+            self._notify_progress(progress_hook, 2, total_steps, "Stopping running Steam processes")
+
+            for user_id, user_data in users.items():
+                is_target = user_id == target_user_id
+                user_data["MostRecent"] = "1" if is_target else "0"
+                user_data["RememberPassword"] = "1"
+                user_data["AllowAutoLogin"] = "1" if is_target else user_data.get("AllowAutoLogin", "1")
+
+            target_user = users.get(target_user_id, {})
+            if not target_user:
+                raise SteamAccountChangerError("Target user record missing from loginusers.")
+
+            if not self._write_single_user_loginusers(target_user_id, target_user):
+                raise SteamAccountChangerError("Failed to write trimmed loginusers.vdf")
+            single_user_on_disk = True
+            self._notify_progress(progress_hook, 3, total_steps, f"Writing single-user login file for {username}")
+
+            if not self._set_autologin_registry(username):
+                raise SteamAccountChangerError("Unable to update AutoLoginUser registry value")
+            self._notify_progress(progress_hook, 4, total_steps, "Updating auto-login registry")
+
+            self.kill_steam()
+            if not self.open_steam():
+                raise SteamAccountChangerError("Failed to restart Steam. Please try manually.")
+            self._notify_progress(progress_hook, 5, total_steps, "Restarting Steam client")
+
+            if single_user_on_disk:
+                consumed = self._wait_for_loginusers_activity()
+                if consumed:
+                    self._notify_progress(progress_hook, 6, total_steps, "Steam consumed single-user login data")
+                else:
+                    logger.warning("Steam did not touch loginusers.vdf within the wait window; restoring anyway.")
+                    self._notify_progress(progress_hook, 6, total_steps, "Timeout waiting for Steam confirmation; continuing")
+        except SteamAccountChangerError as exc:
+            logger.error(str(exc))
+            self._restore_loginusers_backup()
+            self._notify_progress(progress_hook, total_steps, total_steps, "Restoring full account roster")
             return False
-        self._notify_progress(progress_hook, 4, total_steps, "Updating auto-login registry")
-
-        self.kill_steam()
-
-        if not self.open_steam():
-            logger.error("Failed to restart Steam. Please try manually.")
-            if single_user_written:
-                self._restore_loginusers_backup()
-            return False
-        self._notify_progress(progress_hook, 5, total_steps, "Restarting Steam client")
 
         self._restore_loginusers_backup()
-        self._notify_progress(progress_hook, 6, total_steps, "Restoring full account roster")
+        self._notify_progress(progress_hook, 7, total_steps, "Restoring full account roster")
 
         logger.info(f"Switched to Steam account: {username}")
         return True
