@@ -22,6 +22,7 @@ import requests
 import vdf  # type: ignore
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
+
 import utils
 import utils.steam_manager
 
